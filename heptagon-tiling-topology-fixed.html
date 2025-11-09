@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>쌍곡 정칠각형 타일링 - 위상 관계 추적</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+            color: #00d4ff;
+        }
+
+        .info {
+            margin-bottom: 20px;
+            text-align: center;
+            color: #aaa;
+            max-width: 700px;
+        }
+
+        .controls {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #16213e;
+            padding: 8px 15px;
+            border-radius: 8px;
+        }
+
+        label {
+            font-size: 14px;
+            color: #00d4ff;
+        }
+
+        input[type="range"] {
+            width: 120px;
+        }
+
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+        }
+
+        button {
+            background: #0f3460;
+            color: #00d4ff;
+            border: 2px solid #00d4ff;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            background: #00d4ff;
+            color: #0f3460;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        #canvas-container {
+            position: relative;
+            background: #0f3460;
+            border-radius: 10px;
+            box-shadow: 0 8px 32px rgba(0, 212, 255, 0.2);
+        }
+
+        canvas {
+            display: block;
+            cursor: grab;
+            border-radius: 10px;
+        }
+
+        canvas:active {
+            cursor: grabbing;
+        }
+
+        .stats {
+            margin-top: 15px;
+            font-size: 12px;
+            color: #888;
+            text-align: center;
+        }
+
+        .layer-control {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>쌍곡 정칠각형 타일링 {7,3} - 위상 관계 추적</h1>
+    <div class="info">
+        각 레이어의 칠각형들이 서로 어떤 꼭짓점/변을 공유하는지 추적하여<br>
+        다음 레이어를 정확한 위치에 생성합니다
+    </div>
+
+    <div class="controls">
+        <div class="layer-control">
+            <button id="prev-layer">◀ 이전</button>
+            <span style="color: #00d4ff; font-weight: bold;">레이어: <span id="current-layer">0</span></span>
+            <button id="next-layer">다음 ▶</button>
+        </div>
+        <div class="control-group">
+            <label for="zoom">줌:</label>
+            <input type="range" id="zoom" min="0.3" max="2" value="0.65" step="0.05">
+            <span id="zoom-value">0.65</span>
+        </div>
+        <div class="control-group">
+            <label for="show-vertices">꼭짓점 표시:</label>
+            <input type="checkbox" id="show-vertices">
+        </div>
+        <button id="reset">초기화</button>
+    </div>
+
+    <div id="canvas-container">
+        <canvas id="canvas" width="900" height="900"></canvas>
+    </div>
+
+    <div class="stats">
+        마우스 드래그로 이동 | 타일 수: <span id="tile-count">0</span> |
+        현재 레이어: <span id="layer-count">0</span>개
+    </div>
+
+    <div id="vertex-list" style="margin-top: 20px; max-width: 800px; background: #16213e; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 11px; display: none;">
+        <div style="color: #00d4ff; font-weight: bold; margin-bottom: 10px;">꼭짓점 좌표 목록:</div>
+        <div id="vertex-coords" style="max-height: 200px; overflow-y: auto; color: #aaa;"></div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width;
+        const height = canvas.height;
+        const centerX = width / 2;
+        const centerY = height / 2;
+        const diskRadius = Math.min(width, height) * 0.45;
+
+        let currentLayer = 0;
+        let maxLayer = 0;
+        let zoom = 0.65;
+        let offsetX = 0;
+        let offsetY = 0;
+        let showVertices = false;
+        let isDragging = false;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
+
+        // 타일 클래스 (위상 정보 포함)
+        class Tile {
+            constructor(vertices, layer, id) {
+                this.vertices = vertices; // 7개 꼭짓점
+                this.layer = layer;
+                this.id = id;
+                this.neighbors = new Array(7).fill(null); // 각 변의 이웃 타일
+                this.vertexSharing = new Map(); // 꼭짓점을 공유하는 타일들
+            }
+
+            getCenter() {
+                let cx = 0, cy = 0;
+                for (let v of this.vertices) {
+                    cx += v.x;
+                    cy += v.y;
+                }
+                return {x: cx/7, y: cy/7};
+            }
+        }
+
+        // 전역 변수
+        let allTiles = [];
+        let tileMap = new Map();
+
+        // 꼭짓점 ID 맵 (전역적으로 고유한 ID 부여)
+        let vertexIdMap = new Map(); // 좌표 -> 알파벳 ID
+        let vertexCounter = 0;
+
+        // 꼭짓점에 ID 부여
+        function assignVertexIds() {
+            vertexIdMap.clear();
+            vertexCounter = 0;
+
+            // 모든 타일의 꼭짓점을 순회하며 고유 ID 부여
+            for (let tile of allTiles) {
+                for (let v of tile.vertices) {
+                    const vid = getVertexId(v);
+                    if (!vertexIdMap.has(vid)) {
+                        // A, B, C, ... Z, AA, AB, ...
+                        const id = getAlphabetId(vertexCounter);
+                        vertexIdMap.set(vid, id);
+                        vertexCounter++;
+                    }
+                }
+            }
+        }
+
+        // 숫자를 알파벳 ID로 변환 (0->A, 1->B, ..., 26->AA, ...)
+        function getAlphabetId(num) {
+            let result = '';
+            do {
+                result = String.fromCharCode(65 + (num % 26)) + result;
+                num = Math.floor(num / 26) - 1;
+            } while (num >= 0);
+            return result;
+        }
+
+        // 특정 좌표의 꼭짓점 ID 얻기
+        function getVertexLabel(vertex) {
+            const vid = getVertexId(vertex);
+            return vertexIdMap.get(vid) || '?';
+        }
+
+        // 복소수 연산
+        function cAdd(a, b) { return {x: a.x + b.x, y: a.y + b.y}; }
+        function cSub(a, b) { return {x: a.x - b.x, y: a.y - b.y}; }
+        function cMul(a, b) { return {x: a.x*b.x - a.y*b.y, y: a.x*b.y + a.y*b.x}; }
+        function cDiv(a, b) {
+            const d = b.x*b.x + b.y*b.y;
+            return {x: (a.x*b.x + a.y*b.y)/d, y: (a.y*b.x - a.x*b.y)/d};
+        }
+        function cAbs(a) { return Math.sqrt(a.x*a.x + a.y*a.y); }
+        function cPolar(r, theta) { return {x: r*Math.cos(theta), y: r*Math.sin(theta)}; }
+        function cDist(a, b) { return Math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2); }
+
+        // 정칠각형 반지름
+        function getHeptagonRadius() {
+            const p = 7, q = 3;
+            const coshR = Math.cos(Math.PI/q) / Math.sin(Math.PI/p);
+            const r = Math.acosh(coshR);
+            return Math.tanh(r/2);
+        }
+
+        const HEPTAGON_RADIUS = getHeptagonRadius();
+
+        // Möbius 변환
+        function mobiusMove(z, a) {
+            if (cAbs(a) < 0.0001) return z;
+            const num = cAdd(z, a);
+            const denom = cAdd({x:1, y:0}, cMul({x:a.x, y:-a.y}, z));
+            return cDiv(num, denom);
+        }
+
+        // 정칠각형 생성
+        function makeHeptagon(center, startAngle) {
+            const vertices = [];
+            for (let i = 0; i < 7; i++) {
+                const angle = 2*Math.PI*i/7 + startAngle;
+                const localVertex = cPolar(HEPTAGON_RADIUS, angle);
+                vertices.push(mobiusMove(localVertex, center));
+            }
+            return vertices;
+        }
+
+        // 화면 좌표
+        function toScreen(z) {
+            return {
+                x: centerX + z.x * diskRadius * zoom + offsetX,
+                y: centerY - z.y * diskRadius * zoom + offsetY
+            };
+        }
+
+        // 측지선 그리기
+        function drawGeodesic(p1, p2, color, width) {
+            if (cAbs(p1) > 0.999 || cAbs(p2) > 0.999) return;
+
+            const s1 = toScreen(p1);
+            const s2 = toScreen(p2);
+
+            const cross = p1.x * p2.y - p1.y * p2.x;
+            if (Math.abs(cross) < 0.01) {
+                ctx.beginPath();
+                ctx.moveTo(s1.x, s1.y);
+                ctx.lineTo(s2.x, s2.y);
+                ctx.strokeStyle = color;
+                ctx.lineWidth = width;
+                ctx.stroke();
+                return;
+            }
+
+            const p1sq = p1.x*p1.x + p1.y*p1.y;
+            const p2sq = p2.x*p2.x + p2.y*p2.y;
+            const denom = 2 * (p1.x*p2.y - p2.x*p1.y);
+
+            if (Math.abs(denom) < 0.0001) return;
+
+            const cx = (p2.y*(1-p1sq) - p1.y*(1-p2sq)) / denom;
+            const cy = (p1.x*(1-p2sq) - p2.x*(1-p1sq)) / denom;
+
+            const sc = toScreen({x:cx, y:cy});
+            const radius = Math.sqrt((s1.x-sc.x)**2 + (s1.y-sc.y)**2);
+
+            const a1 = Math.atan2(s1.y - sc.y, s1.x - sc.x);
+            const a2 = Math.atan2(s2.y - sc.y, s2.x - sc.x);
+
+            let da = a2 - a1;
+            while (da > Math.PI) da -= 2*Math.PI;
+            while (da < -Math.PI) da += 2*Math.PI;
+
+            ctx.beginPath();
+            ctx.arc(sc.x, sc.y, radius, a1, a1 + da, da < 0);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = width;
+            ctx.stroke();
+        }
+
+        // 칠각형 그리기
+        function drawHeptagon(tile, fillColor, edgeColor) {
+            const vertices = tile.vertices;
+
+            // 채우기
+            ctx.beginPath();
+            const s0 = toScreen(vertices[0]);
+            ctx.moveTo(s0.x, s0.y);
+            for (let i = 1; i < 7; i++) {
+                const s = toScreen(vertices[i]);
+                ctx.lineTo(s.x, s.y);
+            }
+            ctx.closePath();
+            ctx.fillStyle = fillColor;
+            ctx.fill();
+
+            // 테두리
+            for (let i = 0; i < 7; i++) {
+                drawGeodesic(vertices[i], vertices[(i+1)%7], edgeColor, 2);
+            }
+
+            // 꼭짓점 표시
+            if (showVertices) {
+                for (let i = 0; i < 7; i++) {
+                    const s = toScreen(vertices[i]);
+
+                    // 점 그리기
+                    ctx.beginPath();
+                    ctx.arc(s.x, s.y, 5, 0, 2*Math.PI);
+                    ctx.fillStyle = '#FFD700';
+                    ctx.fill();
+                    ctx.strokeStyle = '#FFF';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    // 라벨 그리기
+                    const label = getVertexLabel(vertices[i]);
+                    ctx.font = 'bold 11px monospace';
+                    ctx.fillStyle = '#000';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(label, s.x, s.y);
+                }
+            }
+        }
+
+        // 원 반사
+        function circleInvert(p, center, radiusSq) {
+            const shifted = cSub(p, center);
+            const distSq = shifted.x*shifted.x + shifted.y*shifted.y;
+            if (distSq < 0.00001) return p;
+            const factor = radiusSq / distSq;
+            return cAdd({x: shifted.x*factor, y: shifted.y*factor}, center);
+        }
+
+        // 측지선 반사
+        function reflect(point, edge1, edge2) {
+            const edge1sq = edge1.x*edge1.x + edge1.y*edge1.y;
+            const edge2sq = edge2.x*edge2.x + edge2.y*edge2.y;
+            const denom = 2 * (edge1.x*edge2.y - edge2.x*edge1.y);
+
+            if (Math.abs(denom) < 0.001) {
+                const angle = Math.atan2(edge1.y, edge1.x);
+                const cos = Math.cos(-angle), sin = Math.sin(-angle);
+                const rotated = {x: point.x*cos - point.y*sin, y: point.x*sin + point.y*cos};
+                const reflected = {x: rotated.x, y: -rotated.y};
+                const cos2 = Math.cos(angle), sin2 = Math.sin(angle);
+                return {x: reflected.x*cos2 - reflected.y*sin2, y: reflected.x*sin2 + reflected.y*cos2};
+            }
+
+            const cx = (edge2.y*(1-edge1sq) - edge1.y*(1-edge2sq)) / denom;
+            const cy = (edge1.x*(1-edge2sq) - edge2.x*(1-edge1sq)) / denom;
+            const radiusSq = (edge1.x-cx)**2 + (edge1.y-cy)**2;
+
+            return circleInvert(point, {x:cx, y:cy}, radiusSq);
+        }
+
+        // 인접 칠각형 생성
+        function makeAdjacent(vertices, edgeIdx) {
+            const edge1 = vertices[edgeIdx];
+            const edge2 = vertices[(edgeIdx+1)%7];
+
+            const newVertices = [];
+            for (let v of vertices) {
+                newVertices.push(reflect(v, edge1, edge2));
+            }
+            return newVertices;
+        }
+
+        // 타일 ID 생성
+        function getTileId(vertices) {
+            let cx = 0, cy = 0;
+            for (let v of vertices) {
+                cx += v.x;
+                cy += v.y;
+            }
+            return `${(cx/7).toFixed(6)},${(cy/7).toFixed(6)}`;
+        }
+
+        // 꼭짓점 ID 생성
+        function getVertexId(vertex) {
+            return `${vertex.x.toFixed(5)},${vertex.y.toFixed(5)}`;
+        }
+
+        // 두 꼭짓점이 같은지 확인
+        function verticesMatch(v1, v2, threshold = 0.001) {
+            return cDist(v1, v2) < threshold;
+        }
+
+        // 색상
+        const layerColors = [
+            '#FF6B6B', '#4ECDC4', '#FFD93D', '#6C5CE7',
+            '#A29BFE', '#FD79A8', '#FDCB6E', '#74b9ff',
+        ];
+
+        // BFS 방식으로 타일 생성
+        function generateAllTiles(maxLayers) {
+            allTiles = [];
+            tileMap = new Map();
+
+            // Layer 0: 중심
+            const centerVertices = makeHeptagon({x:0, y:0}, -Math.PI/2);
+            const centerId = getTileId(centerVertices);
+            const centerTile = new Tile(centerVertices, 0, centerId);
+            allTiles.push(centerTile);
+            tileMap.set(centerId, centerTile);
+
+            console.log('=== BFS 타일 생성 시작 ===');
+            console.log('Layer 0: 중심 타일 생성');
+
+            // BFS 큐
+            const queue = [centerTile];
+            let processedCount = 0;
+
+            while (queue.length > 0 && processedCount < 100) {
+                const currentTile = queue.shift();
+                processedCount++;
+
+                console.log(`\n처리 중: Layer ${currentTile.layer} 타일 (ID: ${currentTile.id.substring(0, 10)}...)`);
+
+                // 현재 타일의 각 변에 대해
+                for (let edgeIdx = 0; edgeIdx < 7; edgeIdx++) {
+                    // 이미 이웃이 있으면 스킵
+                    if (currentTile.neighbors[edgeIdx] !== null) {
+                        continue;
+                    }
+
+                    // 반사를 통해 인접 타일 생성
+                    const adjVertices = makeAdjacent(currentTile.vertices, edgeIdx);
+                    const adjCenter = adjVertices.reduce((s, v) => cAdd(s, v), {x:0, y:0});
+                    adjCenter.x /= 7; adjCenter.y /= 7;
+
+                    // 디스크 경계 체크
+                    if (cAbs(adjCenter) > 0.95) {
+                        continue;
+                    }
+
+                    const adjId = getTileId(adjVertices);
+
+                    // 이미 존재하는 타일인지 확인
+                    if (tileMap.has(adjId)) {
+                        // 이웃 관계만 설정
+                        const existingTile = tileMap.get(adjId);
+                        currentTile.neighbors[edgeIdx] = existingTile;
+
+                        // 양방향 연결
+                        const reverseEdgeIdx = (edgeIdx + 4) % 7;
+                        if (existingTile.neighbors[reverseEdgeIdx] === null) {
+                            existingTile.neighbors[reverseEdgeIdx] = currentTile;
+                        }
+                        continue;
+                    }
+
+                    // 새 타일의 레이어 계산
+                    const newLayer = currentTile.layer + 1;
+
+                    // 최대 레이어 체크
+                    if (newLayer > maxLayers) {
+                        continue;
+                    }
+
+                    // 새 타일 생성
+                    const adjTile = new Tile(adjVertices, newLayer, adjId);
+                    allTiles.push(adjTile);
+                    tileMap.set(adjId, adjTile);
+
+                    // 이웃 관계 설정 (양방향)
+                    currentTile.neighbors[edgeIdx] = adjTile;
+                    adjTile.neighbors[(edgeIdx + 4) % 7] = currentTile;
+
+                    // 큐에 추가
+                    queue.push(adjTile);
+
+                    console.log(`  변 ${edgeIdx}: Layer ${newLayer} 타일 생성 (중심 거리: ${cAbs(adjCenter).toFixed(3)})`);
+                }
+            }
+
+            // 레이어별 타일 수 계산
+            const layerCounts = {};
+            for (let tile of allTiles) {
+                layerCounts[tile.layer] = (layerCounts[tile.layer] || 0) + 1;
+            }
+
+            console.log('\n=== 생성 완료 ===');
+            for (let layer in layerCounts) {
+                console.log(`Layer ${layer}: ${layerCounts[layer]}개`);
+            }
+            console.log(`총 타일 수: ${allTiles.length}`);
+
+            // maxLayer 업데이트
+            maxLayer = Math.max(...Object.keys(layerCounts).map(Number));
+        }
+
+        // 렌더링
+        function render() {
+            ctx.fillStyle = '#0f3460';
+            ctx.fillRect(0, 0, width, height);
+
+            // Poincaré disk
+            ctx.beginPath();
+            ctx.arc(centerX + offsetX, centerY + offsetY, diskRadius * zoom, 0, 2*Math.PI);
+            ctx.strokeStyle = '#00d4ff';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            let totalCount = 0;
+            let layerCount = 0;
+
+            for (let tile of allTiles) {
+                if (tile.layer > currentLayer) continue;
+
+                totalCount++;
+                if (tile.layer === currentLayer) layerCount++;
+
+                const color = layerColors[tile.layer % layerColors.length];
+                drawHeptagon(tile, color + '40', color);
+            }
+
+            document.getElementById('tile-count').textContent = totalCount;
+            document.getElementById('layer-count').textContent = layerCount;
+            document.getElementById('current-layer').textContent = currentLayer;
+
+            document.getElementById('prev-layer').disabled = currentLayer === 0;
+            document.getElementById('next-layer').disabled = currentLayer >= maxLayer;
+        }
+
+        // 초기화
+        function init() {
+            generateAllTiles(2);  // Layer 0, 1, 2까지 생성
+            assignVertexIds(); // 꼭짓점 ID 부여
+            render();
+        }
+
+        // 이벤트
+        document.getElementById('prev-layer').addEventListener('click', () => {
+            if (currentLayer > 0) { currentLayer--; render(); }
+        });
+
+        document.getElementById('next-layer').addEventListener('click', () => {
+            if (currentLayer < maxLayer) { currentLayer++; render(); }
+        });
+
+        document.getElementById('zoom').addEventListener('input', (e) => {
+            zoom = parseFloat(e.target.value);
+            document.getElementById('zoom-value').textContent = zoom.toFixed(2);
+            render();
+        });
+
+        document.getElementById('show-vertices').addEventListener('change', (e) => {
+            showVertices = e.target.checked;
+
+            // 꼭짓점 목록 표시/숨김
+            const vertexList = document.getElementById('vertex-list');
+            if (showVertices) {
+                vertexList.style.display = 'block';
+
+                // 꼭짓점 좌표 목록 생성
+                const coords = document.getElementById('vertex-coords');
+                let html = '';
+
+                const sortedEntries = Array.from(vertexIdMap.entries()).sort((a, b) => {
+                    return a[1].localeCompare(b[1]);
+                });
+
+                for (let [vid, label] of sortedEntries) {
+                    const parts = vid.split(',');
+                    const x = parseFloat(parts[0]);
+                    const y = parseFloat(parts[1]);
+                    html += `<div style="margin-bottom: 3px;">
+                        <span style="color: #FFD700; font-weight: bold;">${label}</span>:
+                        (${x.toFixed(3)}, ${y.toFixed(3)})
+                    </div>`;
+                }
+                coords.innerHTML = html;
+            } else {
+                vertexList.style.display = 'none';
+            }
+
+            render();
+        });
+
+        document.getElementById('reset').addEventListener('click', () => {
+            zoom = 0.65;
+            offsetX = 0;
+            offsetY = 0;
+            currentLayer = 0;
+            showVertices = false;
+            document.getElementById('zoom').value = 0.65;
+            document.getElementById('zoom-value').textContent = '0.65';
+            document.getElementById('show-vertices').checked = false;
+            render();
+        });
+
+        canvas.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                offsetX += e.clientX - lastMouseX;
+                offsetY += e.clientY - lastMouseY;
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+                render();
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => isDragging = false);
+        canvas.addEventListener('mouseleave', () => isDragging = false);
+
+        init();
+    </script>
+</body>
+</html>
