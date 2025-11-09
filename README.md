@@ -2,9 +2,65 @@
 
 수학적으로 정확한 쌍곡 기하학 시각화: **{7,3} 타일링**
 
+**다양한 플랫폼 구현: HTML/JS, React, Python, Java**
+
 ## 개요
 
 이 프로젝트는 Poincaré disk 모델을 사용하여 Order-3 heptagonal tiling을 시각화합니다. 이는 각 꼭짓점에 3개의 정칠각형이 만나는 쌍곡 평면의 정규 타일링입니다.
+
+## 🚀 구현 버전
+
+### 1. 📄 HTML/JavaScript (Standalone)
+**가장 간단함 - 브라우저에서 바로 실행!**
+```bash
+# 그냥 파일 열기
+open standalone.html
+```
+- ✅ 설치 불필요
+- ✅ 온라인 환경 지원 (CodePen, JSFiddle)
+- ✅ 마우스 드래그/줌 인터랙션
+
+**파일**: `standalone.html`, `index.html`, `hyperbolic.js`
+
+### 2. ⚛️ React
+**모던 웹 프레임워크 + 애니메이션**
+```bash
+cd react-hyperbolic
+npm install
+npm start
+```
+- ✅ 컴포넌트 기반 구조
+- ✅ **단계별 타일 생성 애니메이션** 🎬
+- ✅ React Hooks 활용
+- ✅ 반응형 디자인
+
+**폴더**: `react-hyperbolic/`
+
+### 3. 🐍 Python
+**데이터 과학자/연구자용**
+```bash
+pip install numpy matplotlib
+python hyperbolic_tiling.py
+```
+- ✅ matplotlib 기반 고품질 렌더링
+- ✅ 인터랙티브 슬라이더
+- ✅ Jupyter Notebook 호환 가능
+
+**파일**: `hyperbolic_tiling.py`, `requirements.txt`
+
+### 4. ☕ Java Swing
+**데스크톱 네이티브 애플리케이션**
+```bash
+cd java-hyperbolic
+mvn clean package
+java -jar target/hyperbolic-tiling.jar
+```
+- ✅ 네이티브 데스크톱 앱
+- ✅ **단계별 생성 애니메이션** 🎬
+- ✅ 고성능 Graphics2D 렌더링
+- ✅ 크로스플랫폼 JAR 배포
+
+**폴더**: `java-hyperbolic/`
 
 ## 수학적 배경
 
@@ -27,32 +83,40 @@
 ### 시각화 특징
 - 정교한 타일 경계 표현
 - 각 타일의 색상 구분
-- 인터랙티브 탐색 (팬, 줌)
-- 타일 깊이 조절 가능
+- 타일 깊이 조절 가능 (Depth 1-6)
+- 인터랙티브 컨트롤
 
-## 사용 방법
+## 📁 파일 구조
 
-### 로컬에서 실행
-
-```bash
-# Python 3으로 간단한 서버 실행
-python3 -m http.server 8000
-
-# 또는 Python 2
-python -m SimpleHTTPServer 8000
-
-# 브라우저에서 열기
-open http://localhost:8000
 ```
-
-### 컨트롤
-
-- **Depth 슬라이더**: 타일링의 재귀 깊이 조절 (1-6)
-- **Show Edges**: 타일 경계선 표시/숨김
-- **Color Tiles**: 타일 색상 모드 전환
-- **마우스 드래그**: 뷰 이동 (팬)
-- **마우스 휠**: 줌 인/아웃
-- **Reset View**: 초기 뷰로 복귀
+.
+├── standalone.html              # 단일 파일 HTML 버전 (권장) ⭐
+├── index.html                   # HTML + 외부 JS
+├── hyperbolic.js                # 쌍곡 기하학 구현
+├── hyperbolic_tiling.py         # Python 구현
+├── requirements.txt             # Python 의존성
+├── README.md                    # 메인 문서
+├── README_PYTHON.md             # Python 전용 문서
+│
+├── react-hyperbolic/            # React 버전
+│   ├── src/
+│   │   ├── App.js              # 메인 컴포넌트
+│   │   ├── hyperbolic.js       # 로직
+│   │   └── App.css             # 스타일
+│   ├── package.json
+│   └── README.md
+│
+└── java-hyperbolic/             # Java Swing 버전
+    ├── src/main/java/hyperbolic/
+    │   ├── HyperbolicViewer.java      # 메인 애플리케이션
+    │   ├── PoincarePanel.java         # 렌더링 패널
+    │   ├── HeptagonalTiling.java      # 타일링 생성
+    │   ├── Complex.java               # 복소수
+    │   └── MobiusTransform.java       # Möbius 변환
+    ├── pom.xml                         # Maven 빌드
+    ├── build.sh                        # 빌드 스크립트
+    └── README.md
+```
 
 ## 구현 세부사항
 
@@ -77,37 +141,106 @@ f(z) = (az + b) / (cz + d)
 
 **측지선**: Poincaré disk에서 측지선은 단위원과 직교하는 원의 호
 
-## 파일 구조
+## 🔧 기술 스택
 
-```
-.
-├── index.html          # HTML 구조 및 UI
-├── hyperbolic.js       # 쌍곡 기하학 구현
-└── README.md          # 이 파일
-```
-
-## 기술 스택
-
+### HTML/JS
 - **순수 JavaScript**: 외부 라이브러리 없음
 - **HTML5 Canvas**: 고성능 렌더링
-- **수학**: 복소수 연산, Möbius 변환, 쌍곡 기하학
+
+### React
+- **React 18**: 최신 Hooks API
+- **Canvas API**: 2D 렌더링
+- **ES6 Modules**: 모듈화
+
+### Python
+- **NumPy**: 수치 계산
+- **matplotlib**: 시각화
+- **복소수**: 내장 complex 타입
+
+### Java
+- **Java Swing**: GUI 프레임워크
+- **Graphics2D**: 안티앨리어싱 렌더링
+- **Maven**: 빌드 도구
+
+### 공통 수학
+- 복소수 연산
+- Möbius 변환
+- 쌍곡 기하학 (Poincaré disk)
 
 ## 성능
 
-- 깊이 4: ~100-200 타일
-- 깊이 5: ~300-500 타일
-- 깊이 6: ~800-1000 타일 (최대 제한)
+- Depth 4: ~100-200 타일
+- Depth 5: ~300-500 타일
+- Depth 6: ~800-1000 타일 (최대 제한)
+
+## 🆚 버전 비교표
+
+| 특징 | HTML/JS | React | Python | Java |
+|------|---------|-------|--------|------|
+| 설치 필요 | ❌ | npm | pip | JDK |
+| 실행 환경 | 브라우저 | 브라우저 | 데스크톱 | 데스크톱 |
+| 애니메이션 | ❌ | ✅ | ❌ | ✅ |
+| 드래그/줌 | ✅ | ⚠️ | ❌ | ❌ |
+| 성능 | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
+| 코드 구조 | 단순 | 모듈화 | 클래스 | OOP |
+| 배포 | 파일 공유 | 웹 호스팅 | exe/app | JAR |
+| 모바일 지원 | ✅ | ✅ | ❌ | ❌ |
+
+### 사용 시나리오별 추천
+
+- **빠른 데모**: `standalone.html` 👈 **가장 추천!**
+- **웹 앱 개발**: `React` 버전
+- **연구/분석**: `Python` 버전
+- **교육/배포**: `Java` 버전
+
+## 🎬 애니메이션 기능
+
+React와 Java 버전에서 지원하는 **단계별 타일 생성 애니메이션**:
+
+1. BFS 순서대로 타일이 하나씩 나타남
+2. 진행률 표시
+3. Play/Pause 제어
+4. 속도 자동 조절
+
+## 컨트롤
+
+### HTML/JS
+- **Depth 슬라이더**: 타일링의 재귀 깊이 조절 (1-6)
+- **Show Edges**: 타일 경계선 표시/숨김
+- **Color Tiles**: 타일 색상 모드 전환
+- **마우스 드래그**: 뷰 이동 (팬)
+- **마우스 휠**: 줌 인/아웃
+- **Reset View**: 초기 뷰로 복귀
+
+### React & Java
+위 컨트롤 + **Animate Generation** (애니메이션 모드)
+
+### Python
+- **Depth 슬라이더**: 깊이 조절
+- **체크박스**: Show Edges, Color Tiles
+- **Reset 버튼**: 초기화
+
+## 🎓 교육적 가치
+
+이 프로젝트로 배울 수 있는 내용:
+- 🔢 **쌍곡 기하학**: Poincaré disk 모델의 이해
+- 🧮 **복소수 연산**: 기하학적 변환
+- 📐 **측지선**: 쌍곡 공간에서의 "직선"
+- 🔄 **BFS 알고리즘**: 타일 생성
+- 💻 **다중 플랫폼 개발**: 동일 알고리즘, 다양한 언어
+- 🎨 **그래픽스 프로그래밍**: Canvas, Graphics2D, matplotlib
 
 ## 참고 자료
 
 - [Order-3 heptagonal tiling - Verse and Dimensions Wiki](https://verse-and-dimensions.fandom.com/wiki/Order-3_heptagonal_tiling)
 - Poincaré disk model - Wikipedia
 - Hyperbolic geometry - 쌍곡 기하학 이론
+- Schläfli symbol {p,q}
 
-## 라이선스
+## 📝 라이선스
 
 MIT License
 
-## 작성자
+## 🙋 작성자
 
 Claude Code - Hyperbolic Geometry Visualization Project
