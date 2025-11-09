@@ -511,43 +511,54 @@
 
                 console.log(`\n간격 ${i}: 타일 ${i}와 타일 ${(i+1) % layer1Tiles.length} 사이`);
 
-                // tile1과 tile2가 공유하는 Layer 1의 새 꼭짓점 찾기 (중심 꼭짓점 아님!)
-                let sharedNewVertices = [];
+                // tile1과 tile2가 공유하는 모든 꼭짓점 찾기
+                let sharedVertices = [];
                 for (let v1 of tile1.vertices) {
-                    if (isCenterVertex(v1)) continue; // 중심 꼭짓점은 스킵
                     for (let v2 of tile2.vertices) {
                         if (verticesMatch(v1, v2, 0.001)) {
-                            sharedNewVertices.push(v1);
-                            console.log(`  Layer 1의 공유 새 꼭짓점 발견: ${getVertexLabel(v1)} (${v1.x.toFixed(3)}, ${v1.y.toFixed(3)})`);
+                            sharedVertices.push({
+                                vertex: v1,
+                                isCenter: isCenterVertex(v1)
+                            });
+                            console.log(`  공유 꼭짓점: ${getVertexLabel(v1)} - ${isCenterVertex(v1) ? '중심' : '새 꼭짓점'}`);
                         }
                     }
                 }
 
-                if (sharedNewVertices.length === 0) {
-                    console.log('  Layer 1의 공유 새 꼭짓점 없음 - 인접하지 않은 타일');
+                if (sharedVertices.length === 0) {
+                    console.log('  공유 꼭짓점 없음!');
                     continue;
                 }
 
-                // 첫 번째 공유 새 꼭짓점 사용
-                const sharedNewVertex = sharedNewVertices[0];
+                // 중심 꼭짓점 우선 선택 (있으면)
+                let targetVertex = sharedVertices.find(sv => sv.isCenter);
+                if (!targetVertex && sharedVertices.length > 0) {
+                    targetVertex = sharedVertices[0];
+                }
 
-                // tile1에서 이 꼭짓점을 포함하는 변 찾기 (바깥쪽으로 향하는 변)
+                const sharedVertex = targetVertex.vertex;
+                console.log(`  선택된 공유 꼭짓점: ${getVertexLabel(sharedVertex)} (${targetVertex.isCenter ? '중심' : '새'})`)
+
+                // tile1과 tile2 각각에서 바깥쪽 변 찾기
                 let foundLayer2 = false;
+
+                // tile1에서 시도
                 for (let edgeIdx = 0; edgeIdx < 7; edgeIdx++) {
                     const v1 = tile1.vertices[edgeIdx];
                     const v2 = tile1.vertices[(edgeIdx + 1) % 7];
 
-                    // 이 변이 공유 새 꼭짓점을 포함하는지 확인
-                    const hasSharedVertex = verticesMatch(v1, sharedNewVertex, 0.001) ||
-                                           verticesMatch(v2, sharedNewVertex, 0.001);
+                    // 이 변이 공유 꼭짓점을 포함하는지 확인
+                    const hasSharedVertex = verticesMatch(v1, sharedVertex, 0.001) ||
+                                           verticesMatch(v2, sharedVertex, 0.001);
                     if (!hasSharedVertex) continue;
 
-                    // 다른 쪽 끝점도 Layer 1의 새 꼭짓점인지 확인 (중심 꼭짓점이 아님)
-                    const otherVertex = verticesMatch(v1, sharedNewVertex, 0.001) ? v2 : v1;
+                    // 다른 쪽 끝점 확인
+                    const otherVertex = verticesMatch(v1, sharedVertex, 0.001) ? v2 : v1;
                     const otherIsCenter = isCenterVertex(otherVertex);
+                    const bothCenter = otherIsCenter && targetVertex.isCenter;
 
-                    if (otherIsCenter) {
-                        console.log(`  tile1 변 ${edgeIdx}: 한쪽이 중심 꼭짓점, 스킵 (${getVertexLabel(v1)}-${getVertexLabel(v2)})`);
+                    if (bothCenter) {
+                        console.log(`  tile1 변 ${edgeIdx}: 양쪽 모두 중심 꼭짓점 (${getVertexLabel(v1)}-${getVertexLabel(v2)}) - 안쪽 변, 스킵`);
                         continue;
                     }
 
@@ -558,7 +569,7 @@
                     const adjCenter = adjVertices.reduce((s, v) => cAdd(s, v), {x:0, y:0});
                     adjCenter.x /= 7; adjCenter.y /= 7;
 
-                    console.log(`    반사 중심거리: ${cAbs(adjCenter).toFixed(3)}`);
+                    console.log(`    반사 중심거리: ${cAbs(adjCenter).toFixed(3)} (Layer 1: 0.443)`);
 
                     if (cAbs(adjCenter) > 0.95) {
                         console.log('    디스크 외부, 스킵');
@@ -568,6 +579,12 @@
                     const adjId = getTileId(adjVertices);
                     if (tileMap.has(adjId)) {
                         console.log('    이미 존재, 스킵');
+                        continue;
+                    }
+
+                    // 중심거리가 Layer 1보다 작으면 안쪽으로 간 것 - 스킵
+                    if (cAbs(adjCenter) < 0.443) {
+                        console.log(`    ⚠️ 안쪽으로 생성됨 (${cAbs(adjCenter).toFixed(3)} < 0.443), 스킵`);
                         continue;
                     }
 
@@ -589,12 +606,15 @@
                         const v1 = tile2.vertices[edgeIdx];
                         const v2 = tile2.vertices[(edgeIdx + 1) % 7];
 
-                        const hasSharedVertex = verticesMatch(v1, sharedNewVertex, 0.001) ||
-                                               verticesMatch(v2, sharedNewVertex, 0.001);
+                        const hasSharedVertex = verticesMatch(v1, sharedVertex, 0.001) ||
+                                               verticesMatch(v2, sharedVertex, 0.001);
                         if (!hasSharedVertex) continue;
 
-                        const otherVertex = verticesMatch(v1, sharedNewVertex, 0.001) ? v2 : v1;
-                        if (isCenterVertex(otherVertex)) continue;
+                        const otherVertex = verticesMatch(v1, sharedVertex, 0.001) ? v2 : v1;
+                        const otherIsCenter = isCenterVertex(otherVertex);
+                        const bothCenter = otherIsCenter && targetVertex.isCenter;
+
+                        if (bothCenter) continue;
 
                         console.log(`  tile2 변 ${edgeIdx}: 바깥쪽 변! (${getVertexLabel(v1)}-${getVertexLabel(v2)})`);
 
@@ -602,7 +622,13 @@
                         const adjCenter = adjVertices.reduce((s, v) => cAdd(s, v), {x:0, y:0});
                         adjCenter.x /= 7; adjCenter.y /= 7;
 
+                        console.log(`    반사 중심거리: ${cAbs(adjCenter).toFixed(3)}`);
+
                         if (cAbs(adjCenter) > 0.95) continue;
+                        if (cAbs(adjCenter) < 0.443) {
+                            console.log(`    ⚠️ 안쪽으로 생성됨, 스킵`);
+                            continue;
+                        }
 
                         const adjId = getTileId(adjVertices);
                         if (tileMap.has(adjId)) continue;
