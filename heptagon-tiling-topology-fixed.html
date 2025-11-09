@@ -493,29 +493,41 @@
                 return;
             }
 
-            // Layer 2: Layer 1의 외곽 변들에서 반사하여 생성
-            console.log('\n=== Layer 2: Layer 1 타일의 외곽 변에서 반사 ===');
+            // Layer 2: 테스트 - Layer 1의 첫 번째 타일에서 바깥 변 하나만 반사
+            console.log('\n=== Layer 2: 테스트 - 간단하게 하나만 생성 ===');
             const layer2Tiles = [];
 
-            // 각 Layer 1 타일에서 반사
-            for (let i = 0; i < layer1Tiles.length; i++) {
-                const tile1 = layer1Tiles[i];
+            // 중심 타일의 꼭짓점인지 확인
+            function isCenterVertex(v) {
+                for (let vc of centerTile.vertices) {
+                    if (verticesMatch(v, vc, 0.001)) return true;
+                }
+                return false;
+            }
 
-                console.log(`\nLayer 1 타일 ${i}:`);
+            // Layer 1의 첫 번째 타일만 선택
+            if (layer1Tiles.length > 0) {
+                const tile1 = layer1Tiles[0];
+                console.log('\nLayer 1 타일 0 선택');
 
-                // Layer 1 타일의 모든 변을 검사
-                // 변 인덱스: 0번 변은 중심 타일과 공유하는 변 (이미 사용됨)
-                // 변 1-6번: 외곽 변들 - 이 중에서 반사
-
-                // 중심 타일과 공유하는 변을 찾기 위해, 중심 타일의 꼭짓점인지 확인
-                function isCenterVertex(v) {
-                    for (let vc of centerTile.vertices) {
-                        if (verticesMatch(v, vc, 0.001)) return true;
-                    }
-                    return false;
+                // 모든 꼭짓점 출력
+                console.log('타일 0의 모든 꼭짓점:');
+                for (let i = 0; i < 7; i++) {
+                    const v = tile1.vertices[i];
+                    const isCenter = isCenterVertex(v);
+                    console.log(`  꼭짓점 ${i}: ${getVertexLabel(v)} (${v.x.toFixed(3)}, ${v.y.toFixed(3)}) ${isCenter ? '[중심 꼭짓점]' : '[새 꼭짓점]'}`);
                 }
 
-                // 중심 타일과 공유하는 변 찾기 (양쪽 끝점이 모두 중심 꼭짓점)
+                // 모든 변 출력
+                console.log('\n타일 0의 모든 변:');
+                for (let edgeIdx = 0; edgeIdx < 7; edgeIdx++) {
+                    const v1 = tile1.vertices[edgeIdx];
+                    const v2 = tile1.vertices[(edgeIdx + 1) % 7];
+                    const isCenterEdge = isCenterVertex(v1) && isCenterVertex(v2);
+                    console.log(`  변 ${edgeIdx}: ${getVertexLabel(v1)}-${getVertexLabel(v2)} ${isCenterEdge ? '[중심과 공유]' : '[바깥 변]'}`);
+                }
+
+                // 중심 타일과 공유하는 변 찾기
                 let centerSharedEdge = -1;
                 for (let edgeIdx = 0; edgeIdx < 7; edgeIdx++) {
                     const v1 = tile1.vertices[edgeIdx];
@@ -523,63 +535,47 @@
 
                     if (isCenterVertex(v1) && isCenterVertex(v2)) {
                         centerSharedEdge = edgeIdx;
-                        console.log(`  중심 공유 변: ${edgeIdx} (${getVertexLabel(v1)}-${getVertexLabel(v2)})`);
+                        console.log(`\n✓ 중심 공유 변 찾음: 변 ${edgeIdx}`);
                         break;
                     }
                 }
 
-                // 외곽 변들에서 반사하여 Layer 2 생성
-                // 특히 중심 꼭짓점에 인접한 변들(변 1, 6 assuming 0이 공유변)을 우선 처리
-                const edgesToTry = [];
-
                 if (centerSharedEdge !== -1) {
-                    // 공유 변의 양옆 변을 우선 시도 (이 변들이 간격을 향함)
-                    edgesToTry.push((centerSharedEdge + 1) % 7);
-                    edgesToTry.push((centerSharedEdge + 6) % 7);
+                    // 바로 다음 변(바깥 변)에서 반사
+                    const testEdge = (centerSharedEdge + 1) % 7;
+                    const v1 = tile1.vertices[testEdge];
+                    const v2 = tile1.vertices[(testEdge + 1) % 7];
 
-                    // 나머지 변들도 추가
-                    for (let offset = 2; offset <= 5; offset++) {
-                        edgesToTry.push((centerSharedEdge + offset) % 7);
-                    }
-                }
-
-                for (let edgeIdx of edgesToTry) {
-                    // 중심 공유 변은 스킵
-                    if (edgeIdx === centerSharedEdge) continue;
-
-                    const v1 = tile1.vertices[edgeIdx];
-                    const v2 = tile1.vertices[(edgeIdx + 1) % 7];
-
-                    console.log(`  변 ${edgeIdx} 시도 (${getVertexLabel(v1)}-${getVertexLabel(v2)})`);
+                    console.log(`\n테스트: 변 ${testEdge} (${getVertexLabel(v1)}-${getVertexLabel(v2)})에서 반사`);
 
                     // 반사로 타일 생성
-                    const adjVertices = makeAdjacent(tile1.vertices, edgeIdx);
+                    const adjVertices = makeAdjacent(tile1.vertices, testEdge);
+
+                    // 새 타일의 정보 출력
+                    console.log('새 타일의 꼭짓점:');
+                    for (let i = 0; i < 7; i++) {
+                        const v = adjVertices[i];
+                        console.log(`  꼭짓점 ${i}: (${v.x.toFixed(3)}, ${v.y.toFixed(3)})`);
+                    }
+
                     const adjCenter = adjVertices.reduce((s, v) => cAdd(s, v), {x:0, y:0});
                     adjCenter.x /= 7; adjCenter.y /= 7;
 
                     const distance = cAbs(adjCenter);
-                    console.log(`    반사 중심거리: ${distance.toFixed(3)}`);
+                    console.log(`새 타일의 중심: (${adjCenter.x.toFixed(3)}, ${adjCenter.y.toFixed(3)})`);
+                    console.log(`중심으로부터의 거리: ${distance.toFixed(3)}`);
 
-                    // 디스크 경계 체크
-                    if (distance > 0.95) {
-                        console.log('    ❌ 디스크 외부');
-                        continue;
+                    if (distance < 0.95) {
+                        const adjId = getTileId(adjVertices);
+                        const layer2Tile = new Tile(adjVertices, 2, adjId);
+                        allTiles.push(layer2Tile);
+                        tileMap.set(adjId, layer2Tile);
+                        layer2Tiles.push(layer2Tile);
+
+                        console.log('✓✓✓ Layer 2 타일 생성 성공!');
+                    } else {
+                        console.log('❌ 디스크 외부');
                     }
-
-                    // 중복 체크
-                    const adjId = getTileId(adjVertices);
-                    if (tileMap.has(adjId)) {
-                        console.log('    ⊚ 이미 존재하는 타일');
-                        continue;
-                    }
-
-                    // Layer 2 타일 생성
-                    const layer2Tile = new Tile(adjVertices, 2, adjId);
-                    allTiles.push(layer2Tile);
-                    tileMap.set(adjId, layer2Tile);
-                    layer2Tiles.push(layer2Tile);
-
-                    console.log(`    ✓✓✓ Layer 2 타일 생성! (중심거리: ${distance.toFixed(3)})`);
                 }
             }
 
