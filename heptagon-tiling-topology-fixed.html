@@ -494,56 +494,62 @@
             console.log('\n=== Layer 2: Layer 1 타일들 사이의 간격 채우기 ===');
             const layer2Tiles = [];
 
+            // 중심 타일의 꼭짓점인지 확인하는 헬퍼 함수
+            function isCenterVertex(v) {
+                for (let vc of centerTile.vertices) {
+                    if (verticesMatch(v, vc, 0.001)) return true;
+                }
+                return false;
+            }
+
             for (let i = 0; i < layer1Tiles.length; i++) {
                 const tile1 = layer1Tiles[i];
                 const tile2 = layer1Tiles[(i + 1) % layer1Tiles.length];
 
                 console.log(`\n간격 ${i}: 타일 ${i}와 타일 ${(i+1) % layer1Tiles.length} 사이`);
 
-                // tile1과 tile2가 공유하는 꼭짓점 찾기 (중심 타일의 꼭짓점)
-                let sharedWithCenter = [];
+                // tile1과 tile2가 공유하는 중심 꼭짓점 찾기
+                let sharedCenterVertex = null;
                 for (let v1 of tile1.vertices) {
+                    if (!isCenterVertex(v1)) continue;
                     for (let v2 of tile2.vertices) {
                         if (verticesMatch(v1, v2, 0.001)) {
-                            // 중심 타일과도 공유하는지 확인
-                            for (let vc of centerTile.vertices) {
-                                if (verticesMatch(v1, vc, 0.001)) {
-                                    sharedWithCenter.push(v1);
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if (sharedWithCenter.length === 0) {
-                    console.log('  공유 꼭짓점 없음, 스킵');
-                    continue;
-                }
-
-                console.log(`  중심과 공유하는 꼭짓점: ${sharedWithCenter.length}개`);
-
-                // tile1에서 이 공유 꼭짓점을 포함하는 외곽 변 찾기
-                let foundLayer2 = false;
-                for (let edgeIdx = 0; edgeIdx < 7; edgeIdx++) {
-                    // 중심 타일과 연결된 변은 스킵
-                    if (tile1.neighbors[edgeIdx] === centerTile) continue;
-
-                    const v1 = tile1.vertices[edgeIdx];
-                    const v2 = tile1.vertices[(edgeIdx + 1) % 7];
-
-                    // 이 변이 공유 꼭짓점을 포함하는지 확인
-                    let hasShared = false;
-                    for (let sv of sharedWithCenter) {
-                        if (verticesMatch(v1, sv, 0.001) || verticesMatch(v2, sv, 0.001)) {
-                            hasShared = true;
+                            sharedCenterVertex = v1;
+                            console.log(`  공유 중심 꼭짓점 발견: ${getVertexLabel(v1)}`);
                             break;
                         }
                     }
+                    if (sharedCenterVertex) break;
+                }
 
-                    if (!hasShared) continue;
+                if (!sharedCenterVertex) {
+                    console.log('  공유 중심 꼭짓점 없음, 스킵');
+                    continue;
+                }
 
-                    console.log(`  타일1의 변 ${edgeIdx}에서 반사 시도`);
+                // tile1에서 "바깥쪽" 변 찾기
+                // 바깥쪽 변 = 한쪽 끝은 공유 중심 꼭짓점, 다른 쪽 끝은 Layer 1의 새 꼭짓점
+                let foundLayer2 = false;
+                for (let edgeIdx = 0; edgeIdx < 7; edgeIdx++) {
+                    const v1 = tile1.vertices[edgeIdx];
+                    const v2 = tile1.vertices[(edgeIdx + 1) % 7];
+
+                    // 이 변이 공유 중심 꼭짓점을 포함하는지 확인
+                    const hasSharedVertex = verticesMatch(v1, sharedCenterVertex, 0.001) ||
+                                           verticesMatch(v2, sharedCenterVertex, 0.001);
+                    if (!hasSharedVertex) continue;
+
+                    // 다른 쪽 끝점이 중심 타일의 꼭짓점이 아닌지 확인 (= Layer 1의 새 꼭짓점)
+                    const otherVertex = verticesMatch(v1, sharedCenterVertex, 0.001) ? v2 : v1;
+                    const otherIsCenter = isCenterVertex(otherVertex);
+
+                    if (otherIsCenter) {
+                        console.log(`  변 ${edgeIdx}: 양쪽 모두 중심 꼭짓점, 스킵 (${getVertexLabel(v1)}-${getVertexLabel(v2)})`);
+                        continue;
+                    }
+
+                    console.log(`  변 ${edgeIdx}: 바깥쪽 변 발견! (${getVertexLabel(v1)}-${getVertexLabel(v2)})`);
+                    console.log(`    공유 꼭짓점: ${getVertexLabel(sharedCenterVertex)}, 새 꼭짓점: ${getVertexLabel(otherVertex)}`);
 
                     // 반사로 새 타일 생성
                     const adjVertices = makeAdjacent(tile1.vertices, edgeIdx);
@@ -567,13 +573,13 @@
                     tileMap.set(adjId, layer2Tile);
                     layer2Tiles.push(layer2Tile);
 
-                    console.log(`    ✓ Layer 2 타일 생성! (중심거리: ${cAbs(adjCenter).toFixed(3)})`);
+                    console.log(`    ✓✓✓ Layer 2 타일 생성 성공! (중심거리: ${cAbs(adjCenter).toFixed(3)})`);
                     foundLayer2 = true;
                     break;
                 }
 
                 if (!foundLayer2) {
-                    console.log('  Layer 2 타일 생성 실패');
+                    console.log('  ❌ Layer 2 타일 생성 실패');
                 }
             }
 
