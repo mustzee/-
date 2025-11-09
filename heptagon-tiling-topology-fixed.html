@@ -493,8 +493,8 @@
                 return;
             }
 
-            // Layer 2: Layer 1 타일의 가장 바깥쪽 변에서 반사
-            console.log('\n=== Layer 2: Layer 1 타일의 바깥쪽 변에서 생성 ===');
+            // Layer 2: 인접한 Layer 1 타일들 사이의 간격 채우기
+            console.log('\n=== Layer 2: 인접한 Layer 1 타일 사이의 간격 채우기 ===');
             const layer2Tiles = [];
 
             // 중심 타일의 꼭짓점인지 확인
@@ -505,74 +505,122 @@
                 return false;
             }
 
-            // 각 Layer 1 타일의 가장 바깥쪽 변 찾기
+            // 인접한 두 Layer 1 타일 사이의 간격 처리
             for (let i = 0; i < layer1Tiles.length; i++) {
-                const tile = layer1Tiles[i];
-                console.log(`\nLayer 1 타일 ${i}:`);
+                const tile1 = layer1Tiles[i];
+                const tile2 = layer1Tiles[(i + 1) % layer1Tiles.length];
 
-                // 각 변의 중심에서의 거리 계산
-                let edges = [];
+                console.log(`\n간격 ${i}: 타일 ${i}와 타일 ${(i+1) % layer1Tiles.length} 사이`);
+
+                // 두 타일이 공유하는 새 꼭짓점 찾기 (중심 꼭짓점 제외)
+                let sharedNewVertices = [];
+                for (let v1 of tile1.vertices) {
+                    if (isCenterVertex(v1)) continue;
+                    for (let v2 of tile2.vertices) {
+                        if (verticesMatch(v1, v2, 0.001)) {
+                            sharedNewVertices.push(v1);
+                            console.log(`  공유 새 꼭짓점: ${getVertexLabel(v1)} (${v1.x.toFixed(3)}, ${v1.y.toFixed(3)})`);
+                        }
+                    }
+                }
+
+                if (sharedNewVertices.length === 0) {
+                    console.log('  ❌ 공유 새 꼭짓점 없음 - 인접하지 않은 타일');
+                    continue;
+                }
+
+                // 공유 새 꼭짓점 사용 (첫 번째)
+                const sharedVertex = sharedNewVertices[0];
+                console.log(`  선택된 간격 꼭짓점: ${getVertexLabel(sharedVertex)}`);
+
+                // tile1에서 이 꼭짓점을 포함하고, 다른 쪽도 새 꼭짓점인 변 찾기
+                let foundLayer2 = false;
                 for (let edgeIdx = 0; edgeIdx < 7; edgeIdx++) {
-                    const v1 = tile.vertices[edgeIdx];
-                    const v2 = tile.vertices[(edgeIdx + 1) % 7];
+                    const v1 = tile1.vertices[edgeIdx];
+                    const v2 = tile1.vertices[(edgeIdx + 1) % 7];
 
-                    // 변의 중점
-                    const midX = (v1.x + v2.x) / 2;
-                    const midY = (v1.y + v2.y) / 2;
-                    const distFromCenter = Math.sqrt(midX*midX + midY*midY);
+                    // 이 변이 공유 새 꼭짓점을 포함하는지
+                    const hasShared = verticesMatch(v1, sharedVertex, 0.001) ||
+                                     verticesMatch(v2, sharedVertex, 0.001);
+                    if (!hasShared) continue;
 
-                    // 두 꼭짓점이 모두 중심 꼭짓점이면 스킵 (안쪽 변)
-                    const bothCenter = isCenterVertex(v1) && isCenterVertex(v2);
+                    // 다른 쪽 끝점도 새 꼭짓점인지 (중심 꼭짓점 아님)
+                    const otherVertex = verticesMatch(v1, sharedVertex, 0.001) ? v2 : v1;
+                    if (isCenterVertex(otherVertex)) {
+                        console.log(`  tile1 변 ${edgeIdx} (${getVertexLabel(v1)}-${getVertexLabel(v2)}): 한쪽이 중심 꼭짓점, 스킵`);
+                        continue;
+                    }
 
-                    edges.push({
-                        index: edgeIdx,
-                        v1, v2,
-                        distance: distFromCenter,
-                        bothCenter,
-                        label: `${getVertexLabel(v1)}-${getVertexLabel(v2)}`
-                    });
+                    console.log(`  tile1 변 ${edgeIdx} (${getVertexLabel(v1)}-${getVertexLabel(v2)}): 양쪽 모두 새 꼭짓점!`);
+
+                    // 반사로 타일 생성
+                    const adjVertices = makeAdjacent(tile1.vertices, edgeIdx);
+                    const adjCenter = adjVertices.reduce((s, v) => cAdd(s, v), {x:0, y:0});
+                    adjCenter.x /= 7; adjCenter.y /= 7;
+
+                    console.log(`    반사 중심거리: ${cAbs(adjCenter).toFixed(3)}`);
+
+                    if (cAbs(adjCenter) > 0.95) {
+                        console.log('    디스크 외부, 스킵');
+                        continue;
+                    }
+
+                    const adjId = getTileId(adjVertices);
+                    if (tileMap.has(adjId)) {
+                        console.log('    이미 존재, 스킵');
+                        continue;
+                    }
+
+                    // Layer 2 타일 생성
+                    const layer2Tile = new Tile(adjVertices, 2, adjId);
+                    allTiles.push(layer2Tile);
+                    tileMap.set(adjId, layer2Tile);
+                    layer2Tiles.push(layer2Tile);
+
+                    console.log(`    ✓✓✓ Layer 2 타일 생성! (중심거리: ${cAbs(adjCenter).toFixed(3)})`);
+                    foundLayer2 = true;
+                    break;
                 }
 
-                // 안쪽 변 제외
-                edges = edges.filter(e => !e.bothCenter);
+                // tile1에서 못 찾으면 tile2에서 시도
+                if (!foundLayer2) {
+                    console.log('  tile1에서 실패, tile2에서 시도...');
+                    for (let edgeIdx = 0; edgeIdx < 7; edgeIdx++) {
+                        const v1 = tile2.vertices[edgeIdx];
+                        const v2 = tile2.vertices[(edgeIdx + 1) % 7];
 
-                // 거리 순으로 정렬 (멀 → 가까운)
-                edges.sort((a, b) => b.distance - a.distance);
+                        const hasShared = verticesMatch(v1, sharedVertex, 0.001) ||
+                                         verticesMatch(v2, sharedVertex, 0.001);
+                        if (!hasShared) continue;
 
-                console.log('  변 거리 (먼 → 가까운):');
-                for (let e of edges.slice(0, 3)) {
-                    console.log(`    변 ${e.index} (${e.label}): 거리 ${e.distance.toFixed(3)}`);
+                        const otherVertex = verticesMatch(v1, sharedVertex, 0.001) ? v2 : v1;
+                        if (isCenterVertex(otherVertex)) continue;
+
+                        console.log(`  tile2 변 ${edgeIdx} (${getVertexLabel(v1)}-${getVertexLabel(v2)}): 양쪽 모두 새 꼭짓점!`);
+
+                        const adjVertices = makeAdjacent(tile2.vertices, edgeIdx);
+                        const adjCenter = adjVertices.reduce((s, v) => cAdd(s, v), {x:0, y:0});
+                        adjCenter.x /= 7; adjCenter.y /= 7;
+
+                        if (cAbs(adjCenter) > 0.95) continue;
+
+                        const adjId = getTileId(adjVertices);
+                        if (tileMap.has(adjId)) continue;
+
+                        const layer2Tile = new Tile(adjVertices, 2, adjId);
+                        allTiles.push(layer2Tile);
+                        tileMap.set(adjId, layer2Tile);
+                        layer2Tiles.push(layer2Tile);
+
+                        console.log(`    ✓✓✓ Layer 2 타일 생성! (중심거리: ${cAbs(adjCenter).toFixed(3)})`);
+                        foundLayer2 = true;
+                        break;
+                    }
                 }
 
-                // 가장 먼 변에서 반사
-                const farthestEdge = edges[0];
-                console.log(`  ✓ 가장 바깥쪽 변 선택: 변 ${farthestEdge.index} (${farthestEdge.label})`);
-
-                // 반사로 Layer 2 타일 생성
-                const adjVertices = makeAdjacent(tile.vertices, farthestEdge.index);
-                const adjCenter = adjVertices.reduce((s, v) => cAdd(s, v), {x:0, y:0});
-                adjCenter.x /= 7; adjCenter.y /= 7;
-
-                console.log(`  반사 중심거리: ${cAbs(adjCenter).toFixed(3)}`);
-
-                if (cAbs(adjCenter) > 0.95) {
-                    console.log('  디스크 외부, 스킵');
-                    continue;
+                if (!foundLayer2) {
+                    console.log('  ❌ Layer 2 타일 생성 실패');
                 }
-
-                const adjId = getTileId(adjVertices);
-                if (tileMap.has(adjId)) {
-                    console.log('  이미 존재, 스킵');
-                    continue;
-                }
-
-                // Layer 2 타일 생성
-                const layer2Tile = new Tile(adjVertices, 2, adjId);
-                allTiles.push(layer2Tile);
-                tileMap.set(adjId, layer2Tile);
-                layer2Tiles.push(layer2Tile);
-
-                console.log(`  ✓✓✓ Layer 2 타일 생성! (중심거리: ${cAbs(adjCenter).toFixed(3)})`);
             }
 
             console.log(`\nLayer 2 완료: ${layer2Tiles.length}개 타일`);
