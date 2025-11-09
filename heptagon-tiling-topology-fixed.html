@@ -493,105 +493,71 @@
                 return;
             }
 
-            // Layer 2: 인접한 두 Layer 1 타일 사이의 간격에 생성
-            console.log('\n=== Layer 2: 인접한 Layer 1 타일 사이 간격 분석 ===');
+            // Layer 2: Layer 1 타일의 모든 변에서 반사 (중복 제외)
+            console.log('\n=== Layer 2: Layer 1의 모든 변에서 반사 시도 ===');
             const layer2Tiles = [];
 
-            // 중심 타일의 꼭짓점인지 확인
-            function isCenterVertex(v) {
-                for (let vc of centerTile.vertices) {
-                    if (verticesMatch(v, vc, 0.001)) return true;
-                }
-                return false;
-            }
-
-            // 먼저 Layer 1 타일 0과 타일 1 분석
-            if (layer1Tiles.length >= 2) {
+            // Layer 1의 첫 번째 타일만 테스트
+            if (layer1Tiles.length > 0) {
                 const tile0 = layer1Tiles[0];
-                const tile1 = layer1Tiles[1];
+                console.log('\nLayer 1 타일 0의 모든 변에서 반사:');
 
-                console.log('\n==== 타일 0 분석 ====');
-                console.log('타일 0의 모든 꼭짓점:');
-                for (let i = 0; i < 7; i++) {
-                    const v = tile0.vertices[i];
-                    const isCenter = isCenterVertex(v);
-                    console.log(`  꼭짓점 ${i}: ${getVertexLabel(v)} (${v.x.toFixed(3)}, ${v.y.toFixed(3)}) ${isCenter ? '[중심]' : '[새]'}`);
-                }
+                // 각 변에서 반사
+                for (let edgeIdx = 0; edgeIdx < 7; edgeIdx++) {
+                    const v1 = tile0.vertices[edgeIdx];
+                    const v2 = tile0.vertices[(edgeIdx + 1) % 7];
 
-                console.log('\n==== 타일 1 분석 ====');
-                console.log('타일 1의 모든 꼭짓점:');
-                for (let i = 0; i < 7; i++) {
-                    const v = tile1.vertices[i];
-                    const isCenter = isCenterVertex(v);
-                    console.log(`  꼭짓점 ${i}: ${getVertexLabel(v)} (${v.x.toFixed(3)}, ${v.y.toFixed(3)}) ${isCenter ? '[중심]' : '[새]'}`);
-                }
+                    console.log(`\n변 ${edgeIdx}: ${getVertexLabel(v1)}-${getVertexLabel(v2)}`);
 
-                // 두 타일이 공유하는 꼭짓점 찾기
-                console.log('\n==== 공유 꼭짓점 찾기 ====');
-                const sharedVertices = [];
-                for (let v0 of tile0.vertices) {
-                    for (let v1 of tile1.vertices) {
-                        if (verticesMatch(v0, v1, 0.001)) {
-                            const isCenter = isCenterVertex(v0);
-                            sharedVertices.push({vertex: v0, isCenter: isCenter});
-                            console.log(`  공유 꼭짓점: ${getVertexLabel(v0)} (${v0.x.toFixed(3)}, ${v0.y.toFixed(3)}) ${isCenter ? '[중심]' : '[새]'}`);
-                        }
-                    }
-                }
+                    // 이 변에서 타일 0을 반사
+                    const newVertices = makeAdjacent(tile0.vertices, edgeIdx);
 
-                console.log(`\n총 ${sharedVertices.length}개 꼭짓점 공유`);
+                    // 새 타일의 중심 계산
+                    const newCenter = newVertices.reduce((s, v) => cAdd(s, v), {x:0, y:0});
+                    newCenter.x /= 7;
+                    newCenter.y /= 7;
 
-                // 두 타일이 공유하는 중심 꼭짓점 찾기 (Layer 1의 인접 타일은 하나의 중심 꼭짓점을 공유)
-                const sharedCenterVertex = sharedVertices.find(sv => sv.isCenter);
+                    const distance = cAbs(newCenter);
+                    const angle = Math.atan2(newCenter.y, newCenter.x) * 180 / Math.PI;
 
-                if (sharedCenterVertex) {
-                    console.log(`\n공유 중심 꼭짓점: ${getVertexLabel(sharedCenterVertex.vertex)}`);
+                    console.log(`  새 타일 중심: (${newCenter.x.toFixed(3)}, ${newCenter.y.toFixed(3)})`);
+                    console.log(`  중심거리: ${distance.toFixed(3)}, 각도: ${angle.toFixed(1)}°`);
 
-                    // 타일 0에서 이 중심 꼭짓점에 인접한 새 꼭짓점 찾기
-                    let tile0NewVertex = null;
-                    for (let i = 0; i < 7; i++) {
-                        const v = tile0.vertices[i];
-                        const vNext = tile0.vertices[(i + 1) % 7];
+                    // Layer 1 타일의 중심 거리
+                    const tile0Center = tile0.vertices.reduce((s, v) => cAdd(s, v), {x:0, y:0});
+                    tile0Center.x /= 7;
+                    tile0Center.y /= 7;
+                    const tile0Distance = cAbs(tile0Center);
 
-                        // 현재 꼭짓점이 공유 중심 꼭짓점이고, 다음 꼭짓점이 새 꼭짓점
-                        if (verticesMatch(v, sharedCenterVertex.vertex, 0.001) && !isCenterVertex(vNext)) {
-                            tile0NewVertex = vNext;
-                            console.log(`타일 0: 중심 ${getVertexLabel(v)} → 새 꼭짓점 ${getVertexLabel(vNext)}`);
-                            break;
-                        }
+                    console.log(`  (Layer 1 타일 0의 중심거리: ${tile0Distance.toFixed(3)})`);
+
+                    // 바깥쪽인지 확인
+                    if (distance > tile0Distance) {
+                        console.log(`  ✓ 바깥쪽! (${distance.toFixed(3)} > ${tile0Distance.toFixed(3)})`);
+                    } else {
+                        console.log(`  ✗ 안쪽 (${distance.toFixed(3)} < ${tile0Distance.toFixed(3)})`);
                     }
 
-                    // 타일 1에서 이 중심 꼭짓점에 인접한 새 꼭짓점 찾기
-                    let tile1NewVertex = null;
-                    for (let i = 0; i < 7; i++) {
-                        const vPrev = tile1.vertices[(i + 6) % 7];
-                        const v = tile1.vertices[i];
-
-                        // 현재 꼭짓점이 공유 중심 꼭짓점이고, 이전 꼭짓점이 새 꼭짓점
-                        if (verticesMatch(v, sharedCenterVertex.vertex, 0.001) && !isCenterVertex(vPrev)) {
-                            tile1NewVertex = vPrev;
-                            console.log(`타일 1: 새 꼭짓점 ${getVertexLabel(vPrev)} → 중심 ${getVertexLabel(v)}`);
-                            break;
-                        }
+                    // 디스크 경계 체크
+                    if (distance > 0.95) {
+                        console.log('  ❌ 디스크 외부');
+                        continue;
                     }
 
-                    if (tile0NewVertex && tile1NewVertex) {
-                        console.log(`\n간격의 두 끝점: ${getVertexLabel(tile0NewVertex)} - ${getVertexLabel(tile1NewVertex)}`);
-                        console.log(`${getVertexLabel(tile0NewVertex)}: (${tile0NewVertex.x.toFixed(3)}, ${tile0NewVertex.y.toFixed(3)})`);
-                        console.log(`${getVertexLabel(tile1NewVertex)}: (${tile1NewVertex.x.toFixed(3)}, ${tile1NewVertex.y.toFixed(3)})`);
-                        console.log(`두 꼭짓점 사이 거리: ${cDist(tile0NewVertex, tile1NewVertex).toFixed(3)}`);
-
-                        // 이 두 새 꼭짓점을 잇는 변에서 반사하여 Layer 2 생성
-                        console.log(`\n이 두 꼭짓점을 잇는 변에서 반사 시도...`);
-
-                        // 타일 0에서 반사
-                        const adjVertices = reflect(tile1NewVertex, tile0NewVertex, tile1NewVertex);
-
-                        // 실제로는 전체 타일을 반사해야 함 - 타일 0의 모든 꼭짓점을 이 변을 기준으로 반사
-                        console.log('(전체 타일 반사 로직 필요)');
+                    // 중복 체크
+                    const newId = getTileId(newVertices);
+                    if (tileMap.has(newId)) {
+                        console.log('  ⊚ 이미 존재하는 타일 (중복)');
+                        continue;
                     }
-                } else {
-                    console.log('❌ 공유 중심 꼭짓점을 찾을 수 없음');
+
+                    // Layer 2 타일 생성
+                    const layer2Tile = new Tile(newVertices, 2, newId);
+                    allTiles.push(layer2Tile);
+                    tileMap.set(newId, layer2Tile);
+                    layer2Tiles.push(layer2Tile);
+
+                    console.log(`  ✓✓✓ Layer 2 타일 생성!`);
                 }
             }
 
