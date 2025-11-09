@@ -441,102 +441,144 @@
             '#A29BFE', '#FD79A8', '#FDCB6E', '#74b9ff',
         ];
 
-        // BFS 방식으로 타일 생성
+        // 레이어별 타일 생성
         function generateAllTiles(maxLayers) {
             allTiles = [];
             tileMap = new Map();
 
-            // Layer 0: 중심
+            // Layer 0: 중심 타일
             const centerVertices = makeHeptagon({x:0, y:0}, -Math.PI/2);
             const centerId = getTileId(centerVertices);
             const centerTile = new Tile(centerVertices, 0, centerId);
             allTiles.push(centerTile);
             tileMap.set(centerId, centerTile);
 
-            console.log('=== BFS 타일 생성 시작 ===');
-            console.log('Layer 0: 중심 타일 생성');
+            console.log('=== Layer 0: 중심 타일 생성 ===');
 
-            // BFS 큐
-            const queue = [centerTile];
-            let processedCount = 0;
+            if (maxLayers < 1) return;
 
-            while (queue.length > 0 && processedCount < 100) {
-                const currentTile = queue.shift();
-                processedCount++;
+            // Layer 1: 중심 타일의 7개 변에 각각 타일 생성
+            const layer1Tiles = [];
+            console.log('\n=== Layer 1: 중심 타일의 각 변에서 생성 ===');
 
-                console.log(`\n처리 중: Layer ${currentTile.layer} 타일 (ID: ${currentTile.id.substring(0, 10)}...)`);
+            for (let edgeIdx = 0; edgeIdx < 7; edgeIdx++) {
+                const adjVertices = makeAdjacent(centerVertices, edgeIdx);
+                const adjCenter = adjVertices.reduce((s, v) => cAdd(s, v), {x:0, y:0});
+                adjCenter.x /= 7; adjCenter.y /= 7;
 
-                // 현재 타일의 각 변에 대해
+                if (cAbs(adjCenter) > 0.95) continue;
+
+                const adjId = getTileId(adjVertices);
+                if (tileMap.has(adjId)) continue;
+
+                const adjTile = new Tile(adjVertices, 1, adjId);
+                allTiles.push(adjTile);
+                tileMap.set(adjId, adjTile);
+                layer1Tiles.push(adjTile);
+
+                // 이웃 관계 설정
+                centerTile.neighbors[edgeIdx] = adjTile;
+                adjTile.neighbors[(edgeIdx + 4) % 7] = centerTile;
+
+                console.log(`  변 ${edgeIdx}: 타일 생성 (중심거리: ${cAbs(adjCenter).toFixed(3)})`);
+            }
+
+            console.log(`Layer 1 완료: ${layer1Tiles.length}개 타일`);
+
+            if (maxLayers < 2) {
+                maxLayer = 1;
+                return;
+            }
+
+            // Layer 2: Layer 1 타일들 사이의 간격을 채움
+            console.log('\n=== Layer 2: Layer 1 타일들 사이의 간격 채우기 ===');
+            const layer2Tiles = [];
+
+            for (let i = 0; i < layer1Tiles.length; i++) {
+                const tile1 = layer1Tiles[i];
+                const tile2 = layer1Tiles[(i + 1) % layer1Tiles.length];
+
+                console.log(`\n간격 ${i}: 타일 ${i}와 타일 ${(i+1) % layer1Tiles.length} 사이`);
+
+                // tile1과 tile2가 공유하는 꼭짓점 찾기 (중심 타일의 꼭짓점)
+                let sharedWithCenter = [];
+                for (let v1 of tile1.vertices) {
+                    for (let v2 of tile2.vertices) {
+                        if (verticesMatch(v1, v2, 0.001)) {
+                            // 중심 타일과도 공유하는지 확인
+                            for (let vc of centerTile.vertices) {
+                                if (verticesMatch(v1, vc, 0.001)) {
+                                    sharedWithCenter.push(v1);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (sharedWithCenter.length === 0) {
+                    console.log('  공유 꼭짓점 없음, 스킵');
+                    continue;
+                }
+
+                console.log(`  중심과 공유하는 꼭짓점: ${sharedWithCenter.length}개`);
+
+                // tile1에서 이 공유 꼭짓점을 포함하는 외곽 변 찾기
+                let foundLayer2 = false;
                 for (let edgeIdx = 0; edgeIdx < 7; edgeIdx++) {
-                    // 이미 이웃이 있으면 스킵
-                    if (currentTile.neighbors[edgeIdx] !== null) {
-                        continue;
+                    // 중심 타일과 연결된 변은 스킵
+                    if (tile1.neighbors[edgeIdx] === centerTile) continue;
+
+                    const v1 = tile1.vertices[edgeIdx];
+                    const v2 = tile1.vertices[(edgeIdx + 1) % 7];
+
+                    // 이 변이 공유 꼭짓점을 포함하는지 확인
+                    let hasShared = false;
+                    for (let sv of sharedWithCenter) {
+                        if (verticesMatch(v1, sv, 0.001) || verticesMatch(v2, sv, 0.001)) {
+                            hasShared = true;
+                            break;
+                        }
                     }
 
-                    // 반사를 통해 인접 타일 생성
-                    const adjVertices = makeAdjacent(currentTile.vertices, edgeIdx);
+                    if (!hasShared) continue;
+
+                    console.log(`  타일1의 변 ${edgeIdx}에서 반사 시도`);
+
+                    // 반사로 새 타일 생성
+                    const adjVertices = makeAdjacent(tile1.vertices, edgeIdx);
                     const adjCenter = adjVertices.reduce((s, v) => cAdd(s, v), {x:0, y:0});
                     adjCenter.x /= 7; adjCenter.y /= 7;
 
-                    // 디스크 경계 체크
                     if (cAbs(adjCenter) > 0.95) {
+                        console.log('    디스크 외부, 스킵');
                         continue;
                     }
 
                     const adjId = getTileId(adjVertices);
-
-                    // 이미 존재하는 타일인지 확인
                     if (tileMap.has(adjId)) {
-                        // 이웃 관계만 설정
-                        const existingTile = tileMap.get(adjId);
-                        currentTile.neighbors[edgeIdx] = existingTile;
-
-                        // 양방향 연결
-                        const reverseEdgeIdx = (edgeIdx + 4) % 7;
-                        if (existingTile.neighbors[reverseEdgeIdx] === null) {
-                            existingTile.neighbors[reverseEdgeIdx] = currentTile;
-                        }
+                        console.log('    이미 존재, 스킵');
                         continue;
                     }
 
-                    // 새 타일의 레이어 계산
-                    const newLayer = currentTile.layer + 1;
+                    // 새 Layer 2 타일 생성
+                    const layer2Tile = new Tile(adjVertices, 2, adjId);
+                    allTiles.push(layer2Tile);
+                    tileMap.set(adjId, layer2Tile);
+                    layer2Tiles.push(layer2Tile);
 
-                    // 최대 레이어 체크
-                    if (newLayer > maxLayers) {
-                        continue;
-                    }
+                    console.log(`    ✓ Layer 2 타일 생성! (중심거리: ${cAbs(adjCenter).toFixed(3)})`);
+                    foundLayer2 = true;
+                    break;
+                }
 
-                    // 새 타일 생성
-                    const adjTile = new Tile(adjVertices, newLayer, adjId);
-                    allTiles.push(adjTile);
-                    tileMap.set(adjId, adjTile);
-
-                    // 이웃 관계 설정 (양방향)
-                    currentTile.neighbors[edgeIdx] = adjTile;
-                    adjTile.neighbors[(edgeIdx + 4) % 7] = currentTile;
-
-                    // 큐에 추가
-                    queue.push(adjTile);
-
-                    console.log(`  변 ${edgeIdx}: Layer ${newLayer} 타일 생성 (중심 거리: ${cAbs(adjCenter).toFixed(3)})`);
+                if (!foundLayer2) {
+                    console.log('  Layer 2 타일 생성 실패');
                 }
             }
 
-            // 레이어별 타일 수 계산
-            const layerCounts = {};
-            for (let tile of allTiles) {
-                layerCounts[tile.layer] = (layerCounts[tile.layer] || 0) + 1;
-            }
-
-            console.log('\n=== 생성 완료 ===');
-            for (let layer in layerCounts) {
-                console.log(`Layer ${layer}: ${layerCounts[layer]}개`);
-            }
-            console.log(`총 타일 수: ${allTiles.length}`);
-
-            // maxLayer 업데이트
-            maxLayer = Math.max(...Object.keys(layerCounts).map(Number));
+            console.log(`\nLayer 2 완료: ${layer2Tiles.length}개 타일`);
+            maxLayer = 2;
         }
 
         // 렌더링
