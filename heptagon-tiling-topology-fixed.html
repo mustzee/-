@@ -531,11 +531,12 @@
                     continue;
                 }
 
-                // 타일 0에서 이 꼭짓점을 포함하는 변 중, 다른 끝도 새 꼭짓점인 변 찾기
-                let tile0EdgeIdx = -1;
+                // 타일 1에서 이 꼭짓점을 포함하는 변 중, 다른 끝도 새 꼭짓점인 변 찾기
+                // (타일 0 대신 타일 1에서 반사 - 바깥쪽 방향)
+                let tile1EdgeIdx = -1;
                 for (let edgeIdx = 0; edgeIdx < 7; edgeIdx++) {
-                    const v1 = tile0.vertices[edgeIdx];
-                    const v2 = tile0.vertices[(edgeIdx + 1) % 7];
+                    const v1 = tile1.vertices[edgeIdx];
+                    const v2 = tile1.vertices[(edgeIdx + 1) % 7];
 
                     // 이 변이 sharedNewVertex를 포함하는지
                     const hasShared = verticesMatch(v1, sharedNewVertex, 0.01) ||
@@ -545,24 +546,24 @@
                     // 다른 끝점도 새 꼭짓점인지 확인 (중심 꼭짓점 아님)
                     const otherVertex = verticesMatch(v1, sharedNewVertex, 0.01) ? v2 : v1;
                     if (isCenterVertex(otherVertex)) {
-                        console.log(`  타일 ${i} 변 ${edgeIdx} (${getVertexLabel(v1)}-${getVertexLabel(v2)}): 한쪽이 중심 꼭짓점`);
+                        console.log(`  타일 ${(i+1) % layer1Tiles.length} 변 ${edgeIdx} (${getVertexLabel(v1)}-${getVertexLabel(v2)}): 한쪽이 중심 꼭짓점`);
                         continue;
                     }
 
                     // 양쪽 모두 새 꼭짓점!
-                    console.log(`  타일 ${i} 변 ${edgeIdx} (${getVertexLabel(v1)}-${getVertexLabel(v2)}): 양쪽 모두 새 꼭짓점 ✓`);
-                    tile0EdgeIdx = edgeIdx;
+                    console.log(`  타일 ${(i+1) % layer1Tiles.length} 변 ${edgeIdx} (${getVertexLabel(v1)}-${getVertexLabel(v2)}): 양쪽 모두 새 꼭짓점 ✓`);
+                    tile1EdgeIdx = edgeIdx;
                     break;
                 }
 
-                if (tile0EdgeIdx === -1) {
-                    console.log(`❌ 타일 ${i}에서 적절한 변을 찾을 수 없음`);
+                if (tile1EdgeIdx === -1) {
+                    console.log(`❌ 타일 ${(i+1) % layer1Tiles.length}에서 적절한 변을 찾을 수 없음`);
                     continue;
                 }
 
-                // 이 변에서 반사하여 Layer 2 타일 생성
-                console.log(`\n변 ${tile0EdgeIdx}에서 반사 시도...`);
-                const newVertices = makeAdjacent(tile0.vertices, tile0EdgeIdx);
+                // 타일 1의 이 변에서 반사하여 Layer 2 타일 생성
+                console.log(`\n타일 ${(i+1) % layer1Tiles.length}의 변 ${tile1EdgeIdx}에서 반사 시도...`);
+                const newVertices = makeAdjacent(tile1.vertices, tile1EdgeIdx);
 
                 // 새 타일 정보
                 const newCenter = newVertices.reduce((s, v) => cAdd(s, v), {x:0, y:0});
