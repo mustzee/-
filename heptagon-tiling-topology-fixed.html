@@ -512,58 +512,53 @@
 
                 console.log(`\n=== 타일 ${i}와 타일 ${(i+1) % layer1Tiles.length} 사이 ===`);
 
-                // 두 타일이 공유하는 새 꼭짓점 찾기 (중심 꼭짓점 제외)
-                let sharedNewVertex = null;
+                // 두 타일이 공유하는 중심 꼭짓점 찾기 (인접한 Layer 1 타일은 중심 꼭짓점 하나를 공유)
+                let sharedCenterVertex = null;
                 for (let v0 of tile0.vertices) {
-                    if (isCenterVertex(v0)) continue;
+                    if (!isCenterVertex(v0)) continue;
                     for (let v1 of tile1.vertices) {
-                        if (verticesMatch(v0, v1, 0.01)) {  // 약간 여유있게 0.01
-                            sharedNewVertex = v0;
-                            console.log(`공유 새 꼭짓점 발견: ${getVertexLabel(v0)} (${v0.x.toFixed(3)}, ${v0.y.toFixed(3)})`);
+                        if (verticesMatch(v0, v1, 0.001)) {
+                            sharedCenterVertex = v0;
+                            console.log(`공유 중심 꼭짓점 발견: ${getVertexLabel(v0)} (${v0.x.toFixed(3)}, ${v0.y.toFixed(3)})`);
                             break;
                         }
                     }
-                    if (sharedNewVertex) break;
+                    if (sharedCenterVertex) break;
                 }
 
-                if (!sharedNewVertex) {
-                    console.log('❌ 공유 새 꼭짓점 없음');
+                if (!sharedCenterVertex) {
+                    console.log('❌ 공유 중심 꼭짓점 없음');
                     continue;
                 }
 
-                // 타일 1에서 이 꼭짓점을 포함하는 변 중, 다른 끝도 새 꼭짓점인 변 찾기
-                // (타일 0 대신 타일 1에서 반사 - 바깥쪽 방향)
-                let tile1EdgeIdx = -1;
+                // 타일 0에서 이 중심 꼭짓점을 포함하는 변 중, 다른 끝도 중심 꼭짓점인 변 찾기
+                // (중심 타일과 공유하는 변)
+                let tile0CenterEdgeIdx = -1;
                 for (let edgeIdx = 0; edgeIdx < 7; edgeIdx++) {
-                    const v1 = tile1.vertices[edgeIdx];
-                    const v2 = tile1.vertices[(edgeIdx + 1) % 7];
+                    const v1 = tile0.vertices[edgeIdx];
+                    const v2 = tile0.vertices[(edgeIdx + 1) % 7];
 
-                    // 이 변이 sharedNewVertex를 포함하는지
-                    const hasShared = verticesMatch(v1, sharedNewVertex, 0.01) ||
-                                     verticesMatch(v2, sharedNewVertex, 0.01);
-                    if (!hasShared) continue;
-
-                    // 다른 끝점도 새 꼭짓점인지 확인 (중심 꼭짓점 아님)
-                    const otherVertex = verticesMatch(v1, sharedNewVertex, 0.01) ? v2 : v1;
-                    if (isCenterVertex(otherVertex)) {
-                        console.log(`  타일 ${(i+1) % layer1Tiles.length} 변 ${edgeIdx} (${getVertexLabel(v1)}-${getVertexLabel(v2)}): 한쪽이 중심 꼭짓점`);
-                        continue;
+                    // 양쪽 모두 중심 꼭짓점인지 확인
+                    if (isCenterVertex(v1) && isCenterVertex(v2)) {
+                        tile0CenterEdgeIdx = edgeIdx;
+                        console.log(`  타일 ${i} 중심 공유 변: ${edgeIdx} (${getVertexLabel(v1)}-${getVertexLabel(v2)})`);
+                        break;
                     }
-
-                    // 양쪽 모두 새 꼭짓점!
-                    console.log(`  타일 ${(i+1) % layer1Tiles.length} 변 ${edgeIdx} (${getVertexLabel(v1)}-${getVertexLabel(v2)}): 양쪽 모두 새 꼭짓점 ✓`);
-                    tile1EdgeIdx = edgeIdx;
-                    break;
                 }
 
-                if (tile1EdgeIdx === -1) {
-                    console.log(`❌ 타일 ${(i+1) % layer1Tiles.length}에서 적절한 변을 찾을 수 없음`);
+                if (tile0CenterEdgeIdx === -1) {
+                    console.log('❌ 중심 공유 변을 찾을 수 없음');
                     continue;
                 }
 
-                // 타일 1의 이 변에서 반사하여 Layer 2 타일 생성
-                console.log(`\n타일 ${(i+1) % layer1Tiles.length}의 변 ${tile1EdgeIdx}에서 반사 시도...`);
-                const newVertices = makeAdjacent(tile1.vertices, tile1EdgeIdx);
+                // 중심 공유 변의 반대편 변(변 인덱스 + 3 또는 + 4)에서 반사
+                // 정칠각형이므로 반대편은 대략 +3 또는 +4
+                const oppositeEdgeIdx = (tile0CenterEdgeIdx + 4) % 7;
+                const v1 = tile0.vertices[oppositeEdgeIdx];
+                const v2 = tile0.vertices[(oppositeEdgeIdx + 1) % 7];
+
+                console.log(`\n타일 ${i}의 반대편 변 ${oppositeEdgeIdx} (${getVertexLabel(v1)}-${getVertexLabel(v2)})에서 반사...`);
+                const newVertices = makeAdjacent(tile0.vertices, oppositeEdgeIdx);
 
                 // 새 타일 정보
                 const newCenter = newVertices.reduce((s, v) => cAdd(s, v), {x:0, y:0});
