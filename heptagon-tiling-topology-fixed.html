@@ -582,12 +582,6 @@
                         continue;
                     }
 
-                    // 중심거리가 Layer 1보다 작으면 안쪽으로 간 것 - 스킵
-                    if (cAbs(adjCenter) < 0.443) {
-                        console.log(`    ⚠️ 안쪽으로 생성됨 (${cAbs(adjCenter).toFixed(3)} < 0.443), 스킵`);
-                        continue;
-                    }
-
                     // 새 Layer 2 타일 생성
                     const layer2Tile = new Tile(adjVertices, 2, adjId);
                     allTiles.push(layer2Tile);
@@ -625,10 +619,6 @@
                         console.log(`    반사 중심거리: ${cAbs(adjCenter).toFixed(3)}`);
 
                         if (cAbs(adjCenter) > 0.95) continue;
-                        if (cAbs(adjCenter) < 0.443) {
-                            console.log(`    ⚠️ 안쪽으로 생성됨, 스킵`);
-                            continue;
-                        }
 
                         const adjId = getTileId(adjVertices);
                         if (tileMap.has(adjId)) continue;
