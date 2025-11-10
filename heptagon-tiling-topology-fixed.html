@@ -579,19 +579,25 @@
 
                 console.log(`  타일 1 방향: ${(angle1 * 180 / Math.PI).toFixed(1)}도`);
 
-                // 4. 간격의 중간 각도에 새 칠각형 배치 (120도 회전)
-                let gapAngle = (angle0 + angle1) / 2;
-
-                // 각도 차이가 크면 반대편 선택
+                // 4. 타일 0와 타일 1 사이의 정확한 간격 각도 계산
                 let angleDiff = angle1 - angle0;
                 while (angleDiff > Math.PI) angleDiff -= 2*Math.PI;
                 while (angleDiff < -Math.PI) angleDiff += 2*Math.PI;
 
+                console.log(`  타일 0-1 각도 차이: ${(angleDiff * 180 / Math.PI).toFixed(1)}도`);
+
+                // {7,3} 타일링: 각 꼭짓점에 3개 타일, 360° / 3 = 120°
+                // 타일 0와 1 사이의 정확한 중간 + 반대편 방향
+                let gapAngle;
+
                 if (Math.abs(angleDiff) < Math.PI) {
-                    // 정상적인 간격: 반대 방향으로
-                    gapAngle = angle0 + Math.PI + Math.PI / 3;  // 120도 추가
+                    // 타일 0와 1 사이의 작은 간격: 평균 각도의 반대편
+                    const avgAngle = angle0 + angleDiff / 2;
+                    gapAngle = avgAngle + Math.PI;  // 반대 방향
                 } else {
-                    gapAngle = angle0 - Math.PI / 3;
+                    // 타일 0와 1 사이의 큰 간격: 평균 각도
+                    const avgAngle = angle0 + (angleDiff + (angleDiff > 0 ? -2*Math.PI : 2*Math.PI)) / 2;
+                    gapAngle = avgAngle;
                 }
 
                 console.log(`  새 타일 각도: ${(gapAngle * 180 / Math.PI).toFixed(1)}도`);
