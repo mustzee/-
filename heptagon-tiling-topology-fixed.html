@@ -530,10 +530,28 @@
 
             console.log(`총 ${candidateTiles.length}개 후보 타일 생성`);
 
-            // 거리가 Layer 1보다 먼 타일만 선택 (바깥쪽)
-            const layer1Distance = 0.443;
+            // 거리별로 그룹화
+            const distanceGroups = {};
             for (let candidate of candidateTiles) {
-                if (candidate.distance > layer1Distance) {
+                const distKey = candidate.distance.toFixed(3);
+                if (!distanceGroups[distKey]) {
+                    distanceGroups[distKey] = [];
+                }
+                distanceGroups[distKey].push(candidate);
+            }
+
+            console.log('\n거리별 그룹:');
+            for (let dist in distanceGroups) {
+                console.log(`  거리 ${dist}: ${distanceGroups[dist].length}개`);
+            }
+
+            // 가장 먼 거리 찾기
+            const maxDistance = Math.max(...candidateTiles.map(c => c.distance));
+            console.log(`\n가장 먼 거리: ${maxDistance.toFixed(3)}`);
+
+            // 가장 먼 거리의 타일들만 Layer 2로 선택
+            for (let candidate of candidateTiles) {
+                if (Math.abs(candidate.distance - maxDistance) < 0.001) {
                     const layer2Tile = new Tile(candidate.vertices, 2, candidate.id);
                     allTiles.push(layer2Tile);
                     tileMap.set(candidate.id, layer2Tile);
