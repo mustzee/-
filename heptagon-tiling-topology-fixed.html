@@ -538,14 +538,33 @@
                 // {7,3} 타일링에서 각 꼭짓점에는 3개 타일이 만남 → 120도씩
                 // 타일 0과 타일 1이 차지하는 각도 계산
 
-                // 타일 0의 한 꼭짓점을 원점 좌표계로 변환
+                // 타일 0에서 공유 꼭짓점에 직접 인접한 꼭짓점 찾기
                 let tile0EdgeVertex = null;
+                let sharedIdx0 = -1;
+
+                // 먼저 공유 꼭짓점의 인덱스 찾기
                 for (let i = 0; i < 7; i++) {
-                    const v = tile0.vertices[i];
-                    if (!verticesMatch(v, sharedNewVertex, 0.015) && !isCenterVertex(v)) {
-                        tile0EdgeVertex = v;
+                    if (verticesMatch(tile0.vertices[i], sharedNewVertex, 0.015)) {
+                        sharedIdx0 = i;
                         break;
                     }
+                }
+
+                if (sharedIdx0 === -1) {
+                    console.log('  ❌ 타일 0에서 공유 꼭짓점 인덱스 없음');
+                    continue;
+                }
+
+                // 양옆 꼭짓점 중 중심 꼭짓점이 아닌 것 선택
+                const prevIdx = (sharedIdx0 + 6) % 7;
+                const nextIdx = (sharedIdx0 + 1) % 7;
+
+                if (!isCenterVertex(tile0.vertices[nextIdx])) {
+                    tile0EdgeVertex = tile0.vertices[nextIdx];
+                    console.log(`  타일 0: ${getVertexLabel(sharedNewVertex)} → ${getVertexLabel(tile0EdgeVertex)} (다음)`);
+                } else if (!isCenterVertex(tile0.vertices[prevIdx])) {
+                    tile0EdgeVertex = tile0.vertices[prevIdx];
+                    console.log(`  타일 0: ${getVertexLabel(tile0EdgeVertex)} → ${getVertexLabel(sharedNewVertex)} (이전)`);
                 }
 
                 if (!tile0EdgeVertex) {
@@ -559,14 +578,33 @@
 
                 console.log(`  타일 0 방향: ${(angle0 * 180 / Math.PI).toFixed(1)}도`);
 
-                // 타일 1의 방향
+                // 타일 1에서 공유 꼭짓점에 직접 인접한 꼭짓점 찾기
                 let tile1EdgeVertex = null;
+                let sharedIdx1 = -1;
+
+                // 먼저 공유 꼭짓점의 인덱스 찾기
                 for (let i = 0; i < 7; i++) {
-                    const v = tile1.vertices[i];
-                    if (!verticesMatch(v, sharedNewVertex, 0.015) && !isCenterVertex(v)) {
-                        tile1EdgeVertex = v;
+                    if (verticesMatch(tile1.vertices[i], sharedNewVertex, 0.015)) {
+                        sharedIdx1 = i;
                         break;
                     }
+                }
+
+                if (sharedIdx1 === -1) {
+                    console.log('  ❌ 타일 1에서 공유 꼭짓점 인덱스 없음');
+                    continue;
+                }
+
+                // 양옆 꼭짓점 중 중심 꼭짓점이 아닌 것 선택
+                const prevIdx1 = (sharedIdx1 + 6) % 7;
+                const nextIdx1 = (sharedIdx1 + 1) % 7;
+
+                if (!isCenterVertex(tile1.vertices[nextIdx1])) {
+                    tile1EdgeVertex = tile1.vertices[nextIdx1];
+                    console.log(`  타일 1: ${getVertexLabel(sharedNewVertex)} → ${getVertexLabel(tile1EdgeVertex)} (다음)`);
+                } else if (!isCenterVertex(tile1.vertices[prevIdx1])) {
+                    tile1EdgeVertex = tile1.vertices[prevIdx1];
+                    console.log(`  타일 1: ${getVertexLabel(tile1EdgeVertex)} → ${getVertexLabel(sharedNewVertex)} (이전)`);
                 }
 
                 if (!tile1EdgeVertex) {
