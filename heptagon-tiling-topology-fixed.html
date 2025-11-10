@@ -241,6 +241,7 @@
             const d = b.x*b.x + b.y*b.y;
             return {x: (a.x*b.x + a.y*b.y)/d, y: (a.y*b.x - a.x*b.y)/d};
         }
+        function cNeg(a) { return {x: -a.x, y: -a.y}; }
         function cAbs(a) { return Math.sqrt(a.x*a.x + a.y*a.y); }
         function cPolar(r, theta) { return {x: r*Math.cos(theta), y: r*Math.sin(theta)}; }
         function cDist(a, b) { return Math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2); }
@@ -450,6 +451,7 @@
             const centerVertices = makeHeptagon({x:0, y:0}, -Math.PI/2);
             const centerId = getTileId(centerVertices);
             const centerTile = new Tile(centerVertices, 0, centerId);
+            centerTile.displayNumber = 0;
             allTiles.push(centerTile);
             tileMap.set(centerId, centerTile);
 
@@ -472,6 +474,7 @@
                 if (tileMap.has(adjId)) continue;
 
                 const adjTile = new Tile(adjVertices, 1, adjId);
+                adjTile.displayNumber = edgeIdx + 1;
                 allTiles.push(adjTile);
                 tileMap.set(adjId, adjTile);
                 layer1Tiles.push(adjTile);
