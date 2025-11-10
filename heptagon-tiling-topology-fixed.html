@@ -708,25 +708,24 @@
             console.log('\n=== Layer 3: 간격 채우기 ===');
             const layer3Tiles = [];
 
-            // 타입 A: Layer 1 타일 1개 + Layer 2 타일 2개가 만나는 간격 (7개)
-            console.log('\n--- 타입 A: Layer 1과 Layer 2 사이 간격 ---');
+            // 타입 A: Layer 1 타일 1개 + 양옆 Layer 2 타일 2개가 만나는 간격 (7개)
+            console.log('\n--- 타입 A: Layer 1 타일과 양옆 Layer 2 타일 사이 ---');
             for (let i = 0; i < layer1Tiles.length; i++) {
                 const layer1Tile = layer1Tiles[i];
-                const nextLayer1Tile = layer1Tiles[(i + 1) % layer1Tiles.length];
 
-                // 이 Layer 1 타일과 다음 Layer 1 타일 사이의 Layer 2 타일 찾기
-                // 즉, 타일 i와 (i+1) 사이의 간격에 있는 Layer 2 타일
-                const layer2Tile = layer2Tiles[i];  // 간격 i에 생성된 Layer 2 타일
+                // 이 Layer 1 타일의 양옆 Layer 2 타일
+                const leftLayer2Tile = layer2Tiles[(i + layer2Tiles.length - 1) % layer2Tiles.length];
+                const rightLayer2Tile = layer2Tiles[i];
 
-                console.log(`\n=== 간격 ${i}: Layer 1 타일 ${layer1Tile.displayNumber}, Layer 2 타일 ${layer2Tile.displayNumber}, Layer 1 타일 ${nextLayer1Tile.displayNumber} ===`);
+                console.log(`\n=== 간격 ${i}: Layer 1 타일 ${layer1Tile.displayNumber}, Layer 2 타일 ${leftLayer2Tile.displayNumber}, Layer 2 타일 ${rightLayer2Tile.displayNumber} ===`);
 
                 // 세 타일이 공유하는 꼭짓점 찾기
                 let sharedVertex = null;
                 for (let v1 of layer1Tile.vertices) {
                     if (isCenterVertex(v1)) continue;
-                    for (let v2 of layer2Tile.vertices) {
+                    for (let v2 of leftLayer2Tile.vertices) {
                         if (!verticesMatch(v1, v2, 0.03)) continue;
-                        for (let v3 of nextLayer1Tile.vertices) {
+                        for (let v3 of rightLayer2Tile.vertices) {
                             if (verticesMatch(v2, v3, 0.03)) {
                                 sharedVertex = v1;
                                 break;
@@ -762,31 +761,31 @@
                     }
                 }
 
-                // Layer 2 타일에서 인접 꼭짓점 찾기
-                let l2EdgeVertex = null;
-                for (let k = 0; k < layer2Tile.vertices.length; k++) {
-                    if (verticesMatch(layer2Tile.vertices[k], sharedVertex, 0.03)) {
-                        const nextIdx = (k + 1) % layer2Tile.vertices.length;
-                        const prevIdx = (k + layer2Tile.vertices.length - 1) % layer2Tile.vertices.length;
-                        if (!isCenterVertex(layer2Tile.vertices[nextIdx])) {
-                            l2EdgeVertex = layer2Tile.vertices[nextIdx];
-                        } else if (!isCenterVertex(layer2Tile.vertices[prevIdx])) {
-                            l2EdgeVertex = layer2Tile.vertices[prevIdx];
+                // 왼쪽 Layer 2 타일에서 인접 꼭짓점 찾기
+                let leftL2EdgeVertex = null;
+                for (let k = 0; k < leftLayer2Tile.vertices.length; k++) {
+                    if (verticesMatch(leftLayer2Tile.vertices[k], sharedVertex, 0.03)) {
+                        const nextIdx = (k + 1) % leftLayer2Tile.vertices.length;
+                        const prevIdx = (k + leftLayer2Tile.vertices.length - 1) % leftLayer2Tile.vertices.length;
+                        if (!isCenterVertex(leftLayer2Tile.vertices[nextIdx])) {
+                            leftL2EdgeVertex = leftLayer2Tile.vertices[nextIdx];
+                        } else if (!isCenterVertex(leftLayer2Tile.vertices[prevIdx])) {
+                            leftL2EdgeVertex = leftLayer2Tile.vertices[prevIdx];
                         }
                         break;
                     }
                 }
 
-                if (!l1EdgeVertex || !l2EdgeVertex) {
+                if (!l1EdgeVertex || !leftL2EdgeVertex) {
                     console.log('  ❌ 인접 꼭짓점 없음');
                     continue;
                 }
 
-                // 각도 계산
+                // 각도 계산 (Layer 1과 왼쪽 Layer 2 사이)
                 const v1Local = mobiusMove(l1EdgeVertex, moveToOrigin);
                 const angle1 = Math.atan2(v1Local.y, v1Local.x);
 
-                const v2Local = mobiusMove(l2EdgeVertex, moveToOrigin);
+                const v2Local = mobiusMove(leftL2EdgeVertex, moveToOrigin);
                 const angle2 = Math.atan2(v2Local.y, v2Local.x);
 
                 let angleDiff = angle2 - angle1;
@@ -819,7 +818,7 @@
                 const tempVertices = makeHeptagon(newCenterPoint, gapAngle);
 
                 // 기존 꼭짓점 재사용
-                const existingVertices = [sharedVertex, l1EdgeVertex, l2EdgeVertex];
+                const existingVertices = [sharedVertex, l1EdgeVertex, leftL2EdgeVertex];
                 const newVertices = tempVertices.map(v => {
                     for (let existing of existingVertices) {
                         if (verticesMatch(v, existing, 0.03)) {
