@@ -704,43 +704,60 @@
 
             console.log(`\nLayer 2 완료: ${layer2Tiles.length}개 타일`);
 
-            // === Layer 3: 인접한 Layer 2 타일들 사이의 간격 채우기 ===
-            console.log('\n=== Layer 3: 인접한 Layer 2 타일들 사이 간격 채우기 (14개 예상) ===');
-            const layer3Tiles = [];
+            // === Layer 3: Layer 2 타일들 사이의 간격 채우기 ===
+            console.log('\n=== Layer 3: Layer 2 타일들 사이 간격 채우기 (14개 예상) ===');
 
-            // Layer 2 타일들이 원형으로 배치되어 있으므로, 각 인접한 타일 쌍마다 간격이 있음
-            for (let gapIdx = 0; gapIdx < 7; gapIdx++) {
-                const tile0 = layer2Tiles[gapIdx];
-                const tile1 = layer2Tiles[(gapIdx + 1) % 7];
+            // 먼저 어떤 Layer 2 타일들이 실제로 꼭짓점을 공유하는지 확인
+            console.log('\n--- Layer 2 타일 인접 관계 확인 ---');
+            const adjacentPairs = [];
+            for (let i = 0; i < layer2Tiles.length; i++) {
+                for (let j = i + 1; j < layer2Tiles.length; j++) {
+                    const tile0 = layer2Tiles[i];
+                    const tile1 = layer2Tiles[j];
 
-                console.log(`\n=== 간격 ${gapIdx}: Layer 2 타일 ${tile0.displayNumber}와 ${tile1.displayNumber} 사이 ===`);
-
-                // 두 타일 사이의 공유 꼭짓점 찾기 (외곽 꼭짓점만)
-                let sharedOuterVertex = null;
-                for (let v0 of tile0.vertices) {
-                    if (isCenterVertex(v0)) continue;
-                    for (let v1 of tile1.vertices) {
-                        if (verticesMatch(v0, v1, 0.03)) {
-                            sharedOuterVertex = v0;
-                            break;
+                    // 공유 꼭짓점 개수 확인 (비중심 꼭짓점만)
+                    let sharedCount = 0;
+                    let sharedVertex = null;
+                    for (let v0 of tile0.vertices) {
+                        if (isCenterVertex(v0)) continue;
+                        for (let v1 of tile1.vertices) {
+                            if (verticesMatch(v0, v1, 0.03)) {
+                                sharedCount++;
+                                if (!sharedVertex) sharedVertex = v0;
+                            }
                         }
                     }
-                    if (sharedOuterVertex) break;
-                }
 
-                if (!sharedOuterVertex) {
+                    if (sharedCount > 0) {
+                        console.log(`타일 ${tile0.displayNumber}와 ${tile1.displayNumber}: ${sharedCount}개 꼭짓점 공유`);
+                        adjacentPairs.push({tile0, tile1, sharedVertex, sharedCount});
+                    }
+                }
+            }
+
+            console.log(`\n총 ${adjacentPairs.length}개의 인접한 타일 쌍 발견`);
+
+            const layer3Tiles = [];
+
+            // 각 인접한 쌍에 대해 간격 채우기
+            for (let pairIdx = 0; pairIdx < adjacentPairs.length; pairIdx++) {
+                const {tile0, tile1, sharedVertex} = adjacentPairs[pairIdx];
+
+                console.log(`\n=== 쌍 ${pairIdx}: Layer 2 타일 ${tile0.displayNumber}와 ${tile1.displayNumber} 사이 ===`);
+
+                if (!sharedVertex) {
                     console.log('  ❌ 공유 꼭짓점 없음');
                     continue;
                 }
 
-                console.log(`  공유 꼭짓점: ${getVertexLabel(sharedOuterVertex)} (${sharedOuterVertex.x.toFixed(3)}, ${sharedOuterVertex.y.toFixed(3)})`);
+                console.log(`  공유 꼭짓점: ${getVertexLabel(sharedVertex)} (${sharedVertex.x.toFixed(3)}, ${sharedVertex.y.toFixed(3)})`);
 
                 // 공유 꼭짓점의 인접 꼭짓점 찾기
                 // tile0에서: 공유 꼭짓점에 인접한 외곽 꼭짓점 2개
                 let tile0EdgeVertices = [];
                 let sharedIdx0 = -1;
                 for (let k = 0; k < tile0.vertices.length; k++) {
-                    if (verticesMatch(tile0.vertices[k], sharedOuterVertex, 0.03)) {
+                    if (verticesMatch(tile0.vertices[k], sharedVertex, 0.03)) {
                         sharedIdx0 = k;
                         break;
                     }
@@ -762,7 +779,7 @@
                 let tile1EdgeVertices = [];
                 let sharedIdx1 = -1;
                 for (let k = 0; k < tile1.vertices.length; k++) {
-                    if (verticesMatch(tile1.vertices[k], sharedOuterVertex, 0.03)) {
+                    if (verticesMatch(tile1.vertices[k], sharedVertex, 0.03)) {
                         sharedIdx1 = k;
                         break;
                     }
@@ -807,7 +824,7 @@
                     }
 
                     // Möbius 변환: 공유 꼭짓점을 원점으로
-                    const moveToOrigin = cNeg(sharedOuterVertex);
+                    const moveToOrigin = cNeg(sharedVertex);
 
                     // 각도 계산
                     const v0Local = mobiusMove(baseEdgeVertex, moveToOrigin);
@@ -828,8 +845,8 @@
                     const gapAngle = avgAngle + Math.PI;  // 반대 방향
 
                     // 공유 꼭짓점에서 바깥쪽으로 이동
-                    const sharedDistance = cAbs(sharedOuterVertex);
-                    const sharedAngle = Math.atan2(sharedOuterVertex.y, sharedOuterVertex.x);
+                    const sharedDistance = cAbs(sharedVertex);
+                    const sharedAngle = Math.atan2(sharedVertex.y, sharedVertex.x);
                     const pushOutFactor = 1.4;
                     const newCenterDistance = sharedDistance * pushOutFactor;
                     const newCenterPoint = {
@@ -841,7 +858,7 @@
                     const tempVertices = makeHeptagon(newCenterPoint, gapAngle);
 
                     // 기존 꼭짓점 재사용 (공유 꼭짓점 + 2개 인접 꼭짓점)
-                    const existingVertices = [sharedOuterVertex, baseEdgeVertex, otherEdgeVertex];
+                    const existingVertices = [sharedVertex, baseEdgeVertex, otherEdgeVertex];
                     const newVertices = tempVertices.map(v => {
                         for (let existing of existingVertices) {
                             if (verticesMatch(v, existing, 0.03)) {
