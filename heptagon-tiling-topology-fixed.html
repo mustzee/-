@@ -551,10 +551,12 @@
                 candidate.sharedTiles = Array.from(sharedTiles);
             }
 
-            // 정확히 2개의 인접한 Layer 1 타일과 공유하는 후보만 선택
+            // 정확히 2개의 인접한 Layer 1 타일과 공유하는 후보들만 필터링
             console.log('\n후보 타일 분석:');
+            const validCandidates = [];
+
             for (let candidate of candidateTiles) {
-                console.log(`타일 ${candidate.sourceTile} 변 ${candidate.sourceEdge}: ${candidate.sharedTileCount}개 Layer 1 타일과 공유, 거리 ${candidate.distance.toFixed(3)}`);
+                const logMsg = `타일 ${candidate.sourceTile} 변 ${candidate.sourceEdge}: ${candidate.sharedTileCount}개 Layer 1 타일과 공유, 거리 ${candidate.distance.toFixed(3)}`;
 
                 // 정확히 2개의 Layer 1 타일과 공유 + 그 타일들이 인접함
                 if (candidate.sharedTileCount === 2) {
@@ -564,12 +566,47 @@
                                       (t2 === 0 && t1 === layer1Tiles.length - 1);
 
                     if (isAdjacent) {
+                        validCandidates.push(candidate);
+                        console.log(`${logMsg} ✓ 인접한 2개 타일과 공유`);
+                    } else {
+                        console.log(`${logMsg} ✗ 인접하지 않음`);
+                    }
+                } else {
+                    console.log(`${logMsg}`);
+                }
+            }
+
+            // validCandidates 중에서 거리가 더 먼 것들만 선택
+            if (validCandidates.length > 0) {
+                // 거리별로 그룹화
+                const distGroups = {};
+                for (let c of validCandidates) {
+                    const distKey = c.distance.toFixed(3);
+                    if (!distGroups[distKey]) distGroups[distKey] = [];
+                    distGroups[distKey].push(c);
+                }
+
+                console.log('\n유효 후보 거리별 그룹:');
+                for (let dist in distGroups) {
+                    console.log(`  거리 ${dist}: ${distGroups[dist].length}개`);
+                }
+
+                // 가장 먼 거리 찾기
+                const maxDist = Math.max(...validCandidates.map(c => c.distance));
+                console.log(`\n가장 먼 거리: ${maxDist.toFixed(3)} 선택`);
+
+                // 가장 먼 거리 +0.1 범위 내의 타일들 선택 (더 관대하게)
+                let tileNumber = 8;
+                for (let candidate of validCandidates) {
+                    if (candidate.distance >= maxDist - 0.1) {  // 거리 범위 완화
                         const layer2Tile = new Tile(candidate.vertices, 2, candidate.id);
+                        layer2Tile.displayNumber = tileNumber++;  // 8~15 번호 부여
                         allTiles.push(layer2Tile);
                         tileMap.set(candidate.id, layer2Tile);
                         layer2Tiles.push(layer2Tile);
 
-                        console.log(`  ✓✓✓ Layer 2 생성! (타일 ${t1}와 ${t2} 사이, 거리 ${candidate.distance.toFixed(3)})`);
+                        const [t1, t2] = candidate.sharedTiles;
+                        console.log(`  타일 ${layer2Tile.displayNumber}: 타일 ${t1}와 ${t2} 사이, 거리 ${candidate.distance.toFixed(3)}`);
                     }
                 }
             }
