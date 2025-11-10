@@ -596,12 +596,23 @@
 
                 console.log(`  새 타일 각도: ${(gapAngle * 180 / Math.PI).toFixed(1)}도`);
 
-                // 5. 원점에서 새 칠각형 생성
-                const newHeptagonLocal = makeHeptagon({x:0, y:0}, gapAngle);
+                // 5. 공유 꼭짓점에서 바깥쪽으로 이동한 점을 중심으로 새 칠각형 생성
+                // 공유 꼭짓점의 방향과 거리 계산
+                const sharedDistance = cAbs(sharedNewVertex);
+                const sharedAngle = Math.atan2(sharedNewVertex.y, sharedNewVertex.x);
 
-                // 6. 원래 위치로 되돌리기
-                const moveBack = sharedNewVertex;
-                const newVertices = newHeptagonLocal.map(v => mobiusMove(v, moveBack));
+                // 바깥쪽으로 더 멀리 (Layer 1 거리 + 추가 거리)
+                const pushOutFactor = 1.4;  // Layer 1 덩어리 크기만큼 더 바깥으로
+                const newCenterDistance = sharedDistance * pushOutFactor;
+                const newCenterPoint = {
+                    x: newCenterDistance * Math.cos(sharedAngle),
+                    y: newCenterDistance * Math.sin(sharedAngle)
+                };
+
+                console.log(`  새 중심점: (${newCenterPoint.x.toFixed(3)}, ${newCenterPoint.y.toFixed(3)}), 거리 ${newCenterDistance.toFixed(3)}`);
+
+                // 그 점에서 새 칠각형 생성
+                const newVertices = makeHeptagon(newCenterPoint, gapAngle);
 
                 // 7. 중심 거리 확인
                 const newCenter = newVertices.reduce((s, v) => cAdd(s, v), {x:0, y:0});
