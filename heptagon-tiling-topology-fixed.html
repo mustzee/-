@@ -655,8 +655,20 @@
 
                 console.log(`  새 중심점: (${newCenterPoint.x.toFixed(3)}, ${newCenterPoint.y.toFixed(3)}), 거리 ${newCenterDistance.toFixed(3)}`);
 
-                // 그 점에서 새 칠각형 생성
-                const newVertices = makeHeptagon(newCenterPoint, gapAngle);
+                // 그 점에서 새 칠각형 생성 (임시)
+                const tempVertices = makeHeptagon(newCenterPoint, gapAngle);
+
+                // 기존 꼭짓점 3개와 매칭되는 것들을 재사용
+                const existingVertices = [sharedNewVertex, tile0EdgeVertex, tile1EdgeVertex];
+                const newVertices = tempVertices.map(v => {
+                    for (let existing of existingVertices) {
+                        if (verticesMatch(v, existing, 0.015)) {
+                            console.log(`  ✓ 꼭짓점 재사용: ${getVertexLabel(existing)}`);
+                            return existing;  // 기존 꼭짓점 재사용
+                        }
+                    }
+                    return v;  // 새 꼭짓점
+                });
 
                 // 7. 중심 거리 확인
                 const newCenter = newVertices.reduce((s, v) => cAdd(s, v), {x:0, y:0});
