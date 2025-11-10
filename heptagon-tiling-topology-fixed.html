@@ -493,106 +493,54 @@
                 return;
             }
 
-            // Layer 2: 인접한 Layer 1 타일의 공유 새 꼭짓점에서 생성
-            console.log('\n=== Layer 2: 공유 새 꼭짓점 기반 생성 ===');
+            // Layer 2: 모든 Layer 1 타일의 모든 변에서 반사 후 필터링
+            console.log('\n=== Layer 2: 모든 변에서 반사 후 필터링 ===');
             const layer2Tiles = [];
+            const candidateTiles = [];
 
-            // 중심 타일의 꼭짓점인지 확인
-            function isCenterVertex(v) {
-                for (let vc of centerTile.vertices) {
-                    if (verticesMatch(v, vc, 0.001)) return true;
+            // 모든 Layer 1 타일의 모든 변에서 반사
+            for (let i = 0; i < layer1Tiles.length; i++) {
+                const tile = layer1Tiles[i];
+
+                for (let edgeIdx = 0; edgeIdx < 7; edgeIdx++) {
+                    const newVertices = makeAdjacent(tile.vertices, edgeIdx);
+                    const newCenter = newVertices.reduce((s, v) => cAdd(s, v), {x:0, y:0});
+                    newCenter.x /= 7;
+                    newCenter.y /= 7;
+                    const distance = cAbs(newCenter);
+
+                    // 디스크 내부만
+                    if (distance > 0.95) continue;
+
+                    const newId = getTileId(newVertices);
+
+                    // 중복 체크
+                    if (tileMap.has(newId)) continue;
+
+                    // 후보에 추가
+                    candidateTiles.push({
+                        vertices: newVertices,
+                        id: newId,
+                        distance: distance,
+                        sourceTile: i,
+                        sourceEdge: edgeIdx
+                    });
                 }
-                return false;
             }
 
-            // 각 인접한 Layer 1 타일 쌍에 대해
-            for (let i = 0; i < layer1Tiles.length; i++) {
-                const tile0 = layer1Tiles[i];
-                const tile1 = layer1Tiles[(i + 1) % layer1Tiles.length];
+            console.log(`총 ${candidateTiles.length}개 후보 타일 생성`);
 
-                console.log(`\n=== 타일 ${i}와 타일 ${(i+1) % layer1Tiles.length} 사이 ===`);
+            // 거리가 Layer 1보다 먼 타일만 선택 (바깥쪽)
+            const layer1Distance = 0.443;
+            for (let candidate of candidateTiles) {
+                if (candidate.distance > layer1Distance) {
+                    const layer2Tile = new Tile(candidate.vertices, 2, candidate.id);
+                    allTiles.push(layer2Tile);
+                    tileMap.set(candidate.id, layer2Tile);
+                    layer2Tiles.push(layer2Tile);
 
-                // 두 타일이 공유하는 새 꼭짓점 찾기 (중심 꼭짓점 제외)
-                let sharedNewVertex = null;
-                for (let v0 of tile0.vertices) {
-                    if (isCenterVertex(v0)) continue;
-                    for (let v1 of tile1.vertices) {
-                        if (verticesMatch(v0, v1, 0.01)) {  // 약간 여유있게 0.01
-                            sharedNewVertex = v0;
-                            console.log(`공유 새 꼭짓점 발견: ${getVertexLabel(v0)} (${v0.x.toFixed(3)}, ${v0.y.toFixed(3)})`);
-                            break;
-                        }
-                    }
-                    if (sharedNewVertex) break;
+                    console.log(`타일 ${candidate.sourceTile} 변 ${candidate.sourceEdge}: Layer 2 생성 (거리 ${candidate.distance.toFixed(3)})`);
                 }
-
-                if (!sharedNewVertex) {
-                    console.log('❌ 공유 새 꼭짓점 없음');
-                    continue;
-                }
-
-                // 타일 0에서 이 꼭짓점을 포함하는 변 중, 다른 끝도 새 꼭짓점인 변 찾기
-                let tile0EdgeIdx = -1;
-                for (let edgeIdx = 0; edgeIdx < 7; edgeIdx++) {
-                    const v1 = tile0.vertices[edgeIdx];
-                    const v2 = tile0.vertices[(edgeIdx + 1) % 7];
-
-                    // 이 변이 sharedNewVertex를 포함하는지
-                    const hasShared = verticesMatch(v1, sharedNewVertex, 0.01) ||
-                                     verticesMatch(v2, sharedNewVertex, 0.01);
-                    if (!hasShared) continue;
-
-                    // 다른 끝점도 새 꼭짓점인지 확인 (중심 꼭짓점 아님)
-                    const otherVertex = verticesMatch(v1, sharedNewVertex, 0.01) ? v2 : v1;
-                    if (isCenterVertex(otherVertex)) {
-                        console.log(`  타일 ${i} 변 ${edgeIdx} (${getVertexLabel(v1)}-${getVertexLabel(v2)}): 한쪽이 중심 꼭짓점`);
-                        continue;
-                    }
-
-                    // 양쪽 모두 새 꼭짓점!
-                    console.log(`  타일 ${i} 변 ${edgeIdx} (${getVertexLabel(v1)}-${getVertexLabel(v2)}): 양쪽 모두 새 꼭짓점 ✓`);
-                    tile0EdgeIdx = edgeIdx;
-                    break;
-                }
-
-                if (tile0EdgeIdx === -1) {
-                    console.log(`❌ 타일 ${i}에서 적절한 변을 찾을 수 없음`);
-                    continue;
-                }
-
-                // 이 변에서 반사하여 Layer 2 타일 생성
-                console.log(`\n변 ${tile0EdgeIdx}에서 반사 시도...`);
-                const newVertices = makeAdjacent(tile0.vertices, tile0EdgeIdx);
-
-                // 새 타일 정보
-                const newCenter = newVertices.reduce((s, v) => cAdd(s, v), {x:0, y:0});
-                newCenter.x /= 7;
-                newCenter.y /= 7;
-                const distance = cAbs(newCenter);
-
-                console.log(`  새 타일 중심: (${newCenter.x.toFixed(3)}, ${newCenter.y.toFixed(3)})`);
-                console.log(`  중심거리: ${distance.toFixed(3)}`);
-
-                // 디스크 경계 체크
-                if (distance > 0.95) {
-                    console.log('  ❌ 디스크 외부');
-                    continue;
-                }
-
-                // 중복 체크
-                const newId = getTileId(newVertices);
-                if (tileMap.has(newId)) {
-                    console.log('  ⊚ 이미 존재하는 타일');
-                    continue;
-                }
-
-                // Layer 2 타일 생성
-                const layer2Tile = new Tile(newVertices, 2, newId);
-                allTiles.push(layer2Tile);
-                tileMap.set(newId, layer2Tile);
-                layer2Tiles.push(layer2Tile);
-
-                console.log(`  ✓✓✓ Layer 2 타일 생성! (거리: ${distance.toFixed(3)})`);
             }
 
             console.log(`\nLayer 2 완료: ${layer2Tiles.length}개 타일`);
