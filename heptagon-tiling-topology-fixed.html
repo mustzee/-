@@ -493,122 +493,143 @@
                 return;
             }
 
-            // Layer 2: 모든 Layer 1 타일의 모든 변에서 반사 후 필터링
-            console.log('\n=== Layer 2: 모든 변에서 반사 후 필터링 ===');
+            // Layer 2: 각 간격마다 공유 꼭짓점을 중심으로 각도 기반 생성
+            console.log('\n=== Layer 2: 각도 기반 생성 (각 간격별 독립 처리) ===');
             const layer2Tiles = [];
-            const candidateTiles = [];
 
-            // 모든 Layer 1 타일의 모든 변에서 반사
-            for (let i = 0; i < layer1Tiles.length; i++) {
-                const tile = layer1Tiles[i];
-
-                for (let edgeIdx = 0; edgeIdx < 7; edgeIdx++) {
-                    const newVertices = makeAdjacent(tile.vertices, edgeIdx);
-                    const newCenter = newVertices.reduce((s, v) => cAdd(s, v), {x:0, y:0});
-                    newCenter.x /= 7;
-                    newCenter.y /= 7;
-                    const distance = cAbs(newCenter);
-
-                    // 디스크 내부만
-                    if (distance > 0.95) continue;
-
-                    const newId = getTileId(newVertices);
-
-                    // 중복 체크
-                    if (tileMap.has(newId)) continue;
-
-                    // 후보에 추가
-                    candidateTiles.push({
-                        vertices: newVertices,
-                        id: newId,
-                        distance: distance,
-                        sourceTile: i,
-                        sourceEdge: edgeIdx
-                    });
+            // 중심 타일의 꼭짓점인지 확인
+            function isCenterVertex(v) {
+                for (let vc of centerTile.vertices) {
+                    if (verticesMatch(v, vc, 0.001)) return true;
                 }
+                return false;
             }
 
-            console.log(`총 ${candidateTiles.length}개 후보 타일 생성`);
+            // 7개의 간격 각각 처리
+            for (let gapIdx = 0; gapIdx < 7; gapIdx++) {
+                const tile0 = layer1Tiles[gapIdx];
+                const tile1 = layer1Tiles[(gapIdx + 1) % 7];
 
-            // 각 후보 타일이 몇 개의 Layer 1 타일과 꼭짓점을 공유하는지 확인
-            for (let candidate of candidateTiles) {
-                let sharedTiles = new Set();
+                console.log(`\n=== 간격 ${gapIdx}: 타일 ${gapIdx}와 ${(gapIdx + 1) % 7} 사이 ===`);
 
-                // 이 후보 타일의 각 꼭짓점에 대해
-                for (let v of candidate.vertices) {
-                    // 어떤 Layer 1 타일이 이 꼭짓점을 가지고 있는지 확인
-                    for (let i = 0; i < layer1Tiles.length; i++) {
-                        for (let v1 of layer1Tiles[i].vertices) {
-                            if (verticesMatch(v, v1, 0.01)) {
-                                sharedTiles.add(i);
-                                break;
-                            }
+                // 1. 공유하는 새 꼭짓점 찾기 (거의 같은 점)
+                let sharedNewVertex = null;
+                for (let v0 of tile0.vertices) {
+                    if (isCenterVertex(v0)) continue;
+                    for (let v1 of tile1.vertices) {
+                        if (verticesMatch(v0, v1, 0.015)) {  // 약간 관대하게
+                            sharedNewVertex = v0;
+                            console.log(`  공유 꼭짓점: ${getVertexLabel(v0)} (${v0.x.toFixed(3)}, ${v0.y.toFixed(3)})`);
+                            break;
                         }
                     }
+                    if (sharedNewVertex) break;
                 }
 
-                candidate.sharedTileCount = sharedTiles.size;
-                candidate.sharedTiles = Array.from(sharedTiles);
-            }
+                if (!sharedNewVertex) {
+                    console.log('  ❌ 공유 꼭짓점 없음');
+                    continue;
+                }
 
-            // 정확히 2개의 인접한 Layer 1 타일과 공유하는 후보들만 필터링
-            console.log('\n후보 타일 분석:');
-            const validCandidates = [];
+                // 2. 이 꼭짓점을 Möbius 변환으로 원점으로 이동
+                const moveToOrigin = {x: -sharedNewVertex.x, y: -sharedNewVertex.y};
 
-            for (let candidate of candidateTiles) {
-                const logMsg = `타일 ${candidate.sourceTile} 변 ${candidate.sourceEdge}: ${candidate.sharedTileCount}개 Layer 1 타일과 공유, 거리 ${candidate.distance.toFixed(3)}`;
+                // 3. 원점 기준 좌표계에서 새 칠각형 생성
+                // {7,3} 타일링에서 각 꼭짓점에는 3개 타일이 만남 → 120도씩
+                // 타일 0과 타일 1이 차지하는 각도 계산
 
-                // 정확히 2개의 Layer 1 타일과 공유 + 그 타일들이 인접함
-                if (candidate.sharedTileCount === 2) {
-                    const [t1, t2] = candidate.sharedTiles;
-                    const isAdjacent = Math.abs(t1 - t2) === 1 ||
-                                      (t1 === 0 && t2 === layer1Tiles.length - 1) ||
-                                      (t2 === 0 && t1 === layer1Tiles.length - 1);
-
-                    if (isAdjacent) {
-                        validCandidates.push(candidate);
-                        console.log(`${logMsg} ✓ 인접한 2개 타일과 공유`);
-                    } else {
-                        console.log(`${logMsg} ✗ 인접하지 않음`);
+                // 타일 0의 한 꼭짓점을 원점 좌표계로 변환
+                let tile0EdgeVertex = null;
+                for (let i = 0; i < 7; i++) {
+                    const v = tile0.vertices[i];
+                    if (!verticesMatch(v, sharedNewVertex, 0.015) && !isCenterVertex(v)) {
+                        tile0EdgeVertex = v;
+                        break;
                     }
+                }
+
+                if (!tile0EdgeVertex) {
+                    console.log('  ❌ 타일 0 변 꼭짓점 없음');
+                    continue;
+                }
+
+                // 원점 기준 각도 계산
+                const v0Local = mobiusMove(tile0EdgeVertex, moveToOrigin);
+                const angle0 = Math.atan2(v0Local.y, v0Local.x);
+
+                console.log(`  타일 0 방향: ${(angle0 * 180 / Math.PI).toFixed(1)}도`);
+
+                // 타일 1의 방향
+                let tile1EdgeVertex = null;
+                for (let i = 0; i < 7; i++) {
+                    const v = tile1.vertices[i];
+                    if (!verticesMatch(v, sharedNewVertex, 0.015) && !isCenterVertex(v)) {
+                        tile1EdgeVertex = v;
+                        break;
+                    }
+                }
+
+                if (!tile1EdgeVertex) {
+                    console.log('  ❌ 타일 1 변 꼭짓점 없음');
+                    continue;
+                }
+
+                const v1Local = mobiusMove(tile1EdgeVertex, moveToOrigin);
+                const angle1 = Math.atan2(v1Local.y, v1Local.x);
+
+                console.log(`  타일 1 방향: ${(angle1 * 180 / Math.PI).toFixed(1)}도`);
+
+                // 4. 간격의 중간 각도에 새 칠각형 배치 (120도 회전)
+                let gapAngle = (angle0 + angle1) / 2;
+
+                // 각도 차이가 크면 반대편 선택
+                let angleDiff = angle1 - angle0;
+                while (angleDiff > Math.PI) angleDiff -= 2*Math.PI;
+                while (angleDiff < -Math.PI) angleDiff += 2*Math.PI;
+
+                if (Math.abs(angleDiff) < Math.PI) {
+                    // 정상적인 간격: 반대 방향으로
+                    gapAngle = angle0 + Math.PI + Math.PI / 3;  // 120도 추가
                 } else {
-                    console.log(`${logMsg}`);
-                }
-            }
-
-            // validCandidates 중에서 거리가 더 먼 것들만 선택
-            if (validCandidates.length > 0) {
-                // 거리별로 그룹화
-                const distGroups = {};
-                for (let c of validCandidates) {
-                    const distKey = c.distance.toFixed(3);
-                    if (!distGroups[distKey]) distGroups[distKey] = [];
-                    distGroups[distKey].push(c);
+                    gapAngle = angle0 - Math.PI / 3;
                 }
 
-                console.log('\n유효 후보 거리별 그룹:');
-                for (let dist in distGroups) {
-                    console.log(`  거리 ${dist}: ${distGroups[dist].length}개`);
+                console.log(`  새 타일 각도: ${(gapAngle * 180 / Math.PI).toFixed(1)}도`);
+
+                // 5. 원점에서 새 칠각형 생성
+                const newHeptagonLocal = makeHeptagon({x:0, y:0}, gapAngle);
+
+                // 6. 원래 위치로 되돌리기
+                const moveBack = sharedNewVertex;
+                const newVertices = newHeptagonLocal.map(v => mobiusMove(v, moveBack));
+
+                // 7. 중심 거리 확인
+                const newCenter = newVertices.reduce((s, v) => cAdd(s, v), {x:0, y:0});
+                newCenter.x /= 7;
+                newCenter.y /= 7;
+                const distance = cAbs(newCenter);
+
+                console.log(`  새 타일 중심거리: ${distance.toFixed(3)}`);
+
+                if (distance > 0.95) {
+                    console.log('  ❌ 디스크 외부');
+                    continue;
                 }
 
-                // 가장 먼 거리 찾기
-                const maxDist = Math.max(...validCandidates.map(c => c.distance));
-                console.log(`\n가장 먼 거리: ${maxDist.toFixed(3)} 선택`);
-
-                // 가장 먼 거리 +0.1 범위 내의 타일들 선택 (더 관대하게)
-                let tileNumber = 8;
-                for (let candidate of validCandidates) {
-                    if (candidate.distance >= maxDist - 0.1) {  // 거리 범위 완화
-                        const layer2Tile = new Tile(candidate.vertices, 2, candidate.id);
-                        layer2Tile.displayNumber = tileNumber++;  // 8~15 번호 부여
-                        allTiles.push(layer2Tile);
-                        tileMap.set(candidate.id, layer2Tile);
-                        layer2Tiles.push(layer2Tile);
-
-                        const [t1, t2] = candidate.sharedTiles;
-                        console.log(`  타일 ${layer2Tile.displayNumber}: 타일 ${t1}와 ${t2} 사이, 거리 ${candidate.distance.toFixed(3)}`);
-                    }
+                // 8. 중복 체크 및 생성
+                const newId = getTileId(newVertices);
+                if (tileMap.has(newId)) {
+                    console.log('  ⊚ 이미 존재');
+                    continue;
                 }
+
+                const layer2Tile = new Tile(newVertices, 2, newId);
+                layer2Tile.displayNumber = gapIdx + 8;
+                allTiles.push(layer2Tile);
+                tileMap.set(newId, layer2Tile);
+                layer2Tiles.push(layer2Tile);
+
+                console.log(`  ✓✓✓ 타일 ${layer2Tile.displayNumber} 생성!`);
             }
 
             console.log(`\nLayer 2 완료: ${layer2Tiles.length}개 타일`);
