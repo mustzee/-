@@ -662,7 +662,7 @@
                 const existingVertices = [sharedNewVertex, tile0EdgeVertex, tile1EdgeVertex];
                 const newVertices = tempVertices.map(v => {
                     for (let existing of existingVertices) {
-                        if (verticesMatch(v, existing, 0.015)) {
+                        if (verticesMatch(v, existing, 0.03)) {  // threshold 증가: 0.015 → 0.03
                             console.log(`  ✓ 꼭짓점 재사용: ${getVertexLabel(existing)}`);
                             return existing;  // 기존 꼭짓점 재사용
                         }
