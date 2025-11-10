@@ -530,34 +530,47 @@
 
             console.log(`총 ${candidateTiles.length}개 후보 타일 생성`);
 
-            // 거리별로 그룹화
-            const distanceGroups = {};
+            // 각 후보 타일이 몇 개의 Layer 1 타일과 꼭짓점을 공유하는지 확인
             for (let candidate of candidateTiles) {
-                const distKey = candidate.distance.toFixed(3);
-                if (!distanceGroups[distKey]) {
-                    distanceGroups[distKey] = [];
+                let sharedTiles = new Set();
+
+                // 이 후보 타일의 각 꼭짓점에 대해
+                for (let v of candidate.vertices) {
+                    // 어떤 Layer 1 타일이 이 꼭짓점을 가지고 있는지 확인
+                    for (let i = 0; i < layer1Tiles.length; i++) {
+                        for (let v1 of layer1Tiles[i].vertices) {
+                            if (verticesMatch(v, v1, 0.01)) {
+                                sharedTiles.add(i);
+                                break;
+                            }
+                        }
+                    }
                 }
-                distanceGroups[distKey].push(candidate);
+
+                candidate.sharedTileCount = sharedTiles.size;
+                candidate.sharedTiles = Array.from(sharedTiles);
             }
 
-            console.log('\n거리별 그룹:');
-            for (let dist in distanceGroups) {
-                console.log(`  거리 ${dist}: ${distanceGroups[dist].length}개`);
-            }
-
-            // 가장 먼 거리 찾기
-            const maxDistance = Math.max(...candidateTiles.map(c => c.distance));
-            console.log(`\n가장 먼 거리: ${maxDistance.toFixed(3)}`);
-
-            // 가장 먼 거리의 타일들만 Layer 2로 선택
+            // 정확히 2개의 인접한 Layer 1 타일과 공유하는 후보만 선택
+            console.log('\n후보 타일 분석:');
             for (let candidate of candidateTiles) {
-                if (Math.abs(candidate.distance - maxDistance) < 0.001) {
-                    const layer2Tile = new Tile(candidate.vertices, 2, candidate.id);
-                    allTiles.push(layer2Tile);
-                    tileMap.set(candidate.id, layer2Tile);
-                    layer2Tiles.push(layer2Tile);
+                console.log(`타일 ${candidate.sourceTile} 변 ${candidate.sourceEdge}: ${candidate.sharedTileCount}개 Layer 1 타일과 공유, 거리 ${candidate.distance.toFixed(3)}`);
 
-                    console.log(`타일 ${candidate.sourceTile} 변 ${candidate.sourceEdge}: Layer 2 생성 (거리 ${candidate.distance.toFixed(3)})`);
+                // 정확히 2개의 Layer 1 타일과 공유 + 그 타일들이 인접함
+                if (candidate.sharedTileCount === 2) {
+                    const [t1, t2] = candidate.sharedTiles;
+                    const isAdjacent = Math.abs(t1 - t2) === 1 ||
+                                      (t1 === 0 && t2 === layer1Tiles.length - 1) ||
+                                      (t2 === 0 && t1 === layer1Tiles.length - 1);
+
+                    if (isAdjacent) {
+                        const layer2Tile = new Tile(candidate.vertices, 2, candidate.id);
+                        allTiles.push(layer2Tile);
+                        tileMap.set(candidate.id, layer2Tile);
+                        layer2Tiles.push(layer2Tile);
+
+                        console.log(`  ✓✓✓ Layer 2 생성! (타일 ${t1}와 ${t2} 사이, 거리 ${candidate.distance.toFixed(3)})`);
+                    }
                 }
             }
 
