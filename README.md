@@ -4,6 +4,8 @@
 
 **다양한 플랫폼 구현: HTML/JS, React, Python, Java**
 
+> 🍎 **Mac M2/M3 사용자**: VirtualBox/Vagrant 설정 문제가 있으신가요? → [Mac M2 가이드](MAC_M2_VAGRANT_GUIDE.md) 참고
+
 ## 개요
 
 이 프로젝트는 Poincaré disk 모델을 사용하여 Order-3 heptagonal tiling을 시각화합니다. 이는 각 꼭짓점에 3개의 정칠각형이 만나는 쌍곡 평면의 정규 타일링입니다.
