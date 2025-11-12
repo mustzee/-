@@ -779,6 +779,18 @@
                 console.log(`\n=== 타일 ${tile.displayNumber}: 외곽 변 찾기 ===`);
                 console.log(`  새 외곽 꼭짓점: ${newVerts.map(v => getVertexLabel(v)).join(', ')}`);
 
+                // 꼭짓점 순서 확인 (디버깅)
+                console.log(`  꼭짓점 순서:`);
+                for (let k = 0; k < tile.vertices.length; k++) {
+                    const v = tile.vertices[k];
+                    if (isCenterVertex(v)) {
+                        console.log(`    ${k}: CENTER`);
+                    } else {
+                        const isNew = newVerts.some(nv => verticesMatch(nv, v, 0.03));
+                        console.log(`    ${k}: ${getVertexLabel(v)} ${isNew ? '[NEW]' : '[Layer1]'}`);
+                    }
+                }
+
                 // 타일의 꼭짓점 순서에서 연속된 새 꼭짓점 쌍 찾기 (외곽 변)
                 const outerEdges = [];
                 for (let k = 0; k < tile.vertices.length; k++) {
