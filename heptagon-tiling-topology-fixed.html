@@ -891,9 +891,13 @@
 
                     console.log(`    새 타일 중심거리: ${distance.toFixed(3)}`);
 
+                    // 거리 체크 임시 비활성화 - 시각화를 위해
+                    // if (distance > 0.95) {
+                    //     console.log('    ❌ 디스크 외부');
+                    //     continue;
+                    // }
                     if (distance > 0.95) {
-                        console.log('    ❌ 디스크 외부');
-                        continue;
+                        console.log('    ⚠️ 거리 체크 무시하고 생성 (distance > 0.95)');
                     }
 
                     // 중복 체크
