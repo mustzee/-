@@ -789,51 +789,169 @@
                 layer2NewVertices.push({tile, newVerts});
             }
 
-            // Layer 3: Layer 2의 각 변을 기준으로 반사 (Layer 1 방식과 동일)
-            console.log('\n--- Layer 3 타일 생성 시작 (반사 방식) ---');
+            // Layer 3: Layer 2의 변 2, 5를 따라 간격 채우기
+            console.log('\n--- Layer 3 타일 생성 시작 (변 2, 5 간격 채우기) ---');
             clearHTMLLog();
-            logToHTML('=== Layer 3 타일 생성 (Layer 2 반사) ===', '#00d4ff');
+            logToHTML('=== Layer 3 타일 생성 (변 2, 5 간격 채우기) ===', '#00d4ff');
             const layer3Tiles = [];
-            const layer3TileIds = new Set();
 
-            // 각 Layer 2 타일의 각 변에 대해 반사
-            for (let i = 0; i < layer2Tiles.length; i++) {
-                const sourceTile = layer2Tiles[i];
-                logToHTML(`▶ Layer 2 타일 ${sourceTile.displayNumber} → 변 2, 5 반사`, '#88f');
+            // Layer 2 타일의 변 2, 5에서 Layer 1과의 간격 찾기
+            for (let i = 0; i < layer2NewVertices.length; i++) {
+                const {tile, newVerts} = layer2NewVertices[i];
+
+                logToHTML(`▶ Layer 2 타일 ${tile.displayNumber} → 변 2, 5 확인`, '#88f');
 
                 for (let edgeIdx of [2, 5]) {
-                    // 이 변을 기준으로 타일 반사
-                    const newVertices = makeAdjacent(sourceTile.vertices, edgeIdx);
-                    const newTileId = getTileId(newVertices);
+                    const v1 = tile.vertices[edgeIdx];
+                    const v2 = tile.vertices[(edgeIdx + 1) % 7];
 
-                    // 중복 확인 (이미 생성된 타일인지)
-                    if (layer3TileIds.has(newTileId)) {
-                        logToHTML(`  변 ${edgeIdx}: 이미 존재하는 타일 (스킵)`, '#666');
+                    // 이 변이 중심 꼭짓점을 포함하면 스킵
+                    if (isCenterVertex(v1) || isCenterVertex(v2)) {
+                        logToHTML(`  변 ${edgeIdx}: 중심 꼭짓점 포함 (스킵)`, '#666');
                         continue;
                     }
 
-                    // Layer 0, 1, 2에 이미 있는지 확인
+                    // 이 변과 꼭짓점을 공유하는 Layer 1 타일 찾기
+                    let adjacentLayer1 = null;
+                    let sharedVertex = null;
+
+                    for (let l1Tile of layer1Tiles) {
+                        // v1을 공유하는지 확인 (v2는 공유하지 않아야 간격이 있음)
+                        if (l1Tile.vertices.some(v => verticesMatch(v, v1, 0.015) && !isCenterVertex(v))) {
+                            if (!l1Tile.vertices.some(v => verticesMatch(v, v2, 0.015))) {
+                                adjacentLayer1 = l1Tile;
+                                sharedVertex = v1;
+                                break;
+                            }
+                        }
+                        // v2를 공유하는지 확인 (v1은 공유하지 않아야 함)
+                        if (l1Tile.vertices.some(v => verticesMatch(v, v2, 0.015) && !isCenterVertex(v))) {
+                            if (!l1Tile.vertices.some(v => verticesMatch(v, v1, 0.015))) {
+                                adjacentLayer1 = l1Tile;
+                                sharedVertex = v2;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!adjacentLayer1 || !sharedVertex) {
+                        logToHTML(`  변 ${edgeIdx}: Layer 1과 간격 없음`, '#666');
+                        continue;
+                    }
+
+                    // 간격 타일 생성 (Layer 2 방식과 동일)
+                    const moveToOrigin = {x: -sharedVertex.x, y: -sharedVertex.y};
+
+                    // Layer 1에서 공유 꼭짓점 인접 꼭짓점 찾기
+                    let layer1EdgeVertex = null;
+                    for (let k = 0; k < 7; k++) {
+                        if (verticesMatch(adjacentLayer1.vertices[k], sharedVertex, 0.015)) {
+                            const nextIdx = (k + 1) % 7;
+                            const prevIdx = (k + 6) % 7;
+                            if (!isCenterVertex(adjacentLayer1.vertices[nextIdx])) {
+                                layer1EdgeVertex = adjacentLayer1.vertices[nextIdx];
+                            } else if (!isCenterVertex(adjacentLayer1.vertices[prevIdx])) {
+                                layer1EdgeVertex = adjacentLayer1.vertices[prevIdx];
+                            }
+                            break;
+                        }
+                    }
+
+                    // Layer 2에서 공유 꼭짓점 인접 꼭짓점 찾기
+                    let layer2EdgeVertex = null;
+                    for (let k = 0; k < 7; k++) {
+                        if (verticesMatch(tile.vertices[k], sharedVertex, 0.015)) {
+                            const nextIdx = (k + 1) % 7;
+                            const prevIdx = (k + 6) % 7;
+                            if (!isCenterVertex(tile.vertices[nextIdx])) {
+                                layer2EdgeVertex = tile.vertices[nextIdx];
+                            } else if (!isCenterVertex(tile.vertices[prevIdx])) {
+                                layer2EdgeVertex = tile.vertices[prevIdx];
+                            }
+                            break;
+                        }
+                    }
+
+                    if (!layer1EdgeVertex || !layer2EdgeVertex) {
+                        logToHTML(`  변 ${edgeIdx}: 인접 꼭짓점 없음`, '#666');
+                        continue;
+                    }
+
+                    // 각도 계산
+                    const v1Local = mobiusMove(layer1EdgeVertex, moveToOrigin);
+                    const v2Local = mobiusMove(layer2EdgeVertex, moveToOrigin);
+                    const angle1 = Math.atan2(v1Local.y, v1Local.x);
+                    const angle2 = Math.atan2(v2Local.y, v2Local.x);
+
+                    let angleDiff = angle2 - angle1;
+                    while (angleDiff > Math.PI) angleDiff -= 2*Math.PI;
+                    while (angleDiff < -Math.PI) angleDiff += 2*Math.PI;
+
+                    // 간격 각도
+                    let gapAngle;
+                    if (Math.abs(angleDiff) < Math.PI) {
+                        const avgAngle = angle1 + angleDiff / 2;
+                        gapAngle = avgAngle + Math.PI;
+                    } else {
+                        const avgAngle = angle1 + (angleDiff + (angleDiff > 0 ? -2*Math.PI : 2*Math.PI)) / 2;
+                        gapAngle = avgAngle;
+                    }
+
+                    // 새 중심점 (공유 꼭짓점 방향으로)
+                    const sharedDistance = cAbs(sharedVertex);
+                    const sharedAngle = Math.atan2(sharedVertex.y, sharedVertex.x);
+                    const newCenterDistance = sharedDistance * 1.4; // 같은 비율 사용
+                    const newCenterPoint = {
+                        x: newCenterDistance * Math.cos(sharedAngle),
+                        y: newCenterDistance * Math.sin(sharedAngle)
+                    };
+
+                    // 새 칠각형 생성
+                    const tempVertices = makeHeptagon(newCenterPoint, gapAngle);
+
+                    // 기존 꼭짓점 재사용
+                    const existingVertices = [sharedVertex, layer1EdgeVertex, layer2EdgeVertex];
+                    const newVertices = tempVertices.map(v => {
+                        for (let existing of existingVertices) {
+                            if (verticesMatch(v, existing, 0.03)) {
+                                return existing;
+                            }
+                        }
+                        return v;
+                    });
+
+                    // 중심 거리 확인
+                    const newCenter = newVertices.reduce((s, v) => cAdd(s, v), {x:0, y:0});
+                    newCenter.x /= 7;
+                    newCenter.y /= 7;
+                    const distance = cAbs(newCenter);
+
+                    if (distance > 0.95) {
+                        logToHTML(`  변 ${edgeIdx}: 디스크 외부 (스킵)`, '#666');
+                        continue;
+                    }
+
+                    // 중복 체크
+                    const newId = getTileId(newVertices);
                     let isDuplicate = false;
                     for (let existingTile of allTiles) {
-                        if (existingTile.layer < 3 && getTileId(existingTile.vertices) === newTileId) {
+                        if (getTileId(existingTile.vertices) === newId) {
                             isDuplicate = true;
                             break;
                         }
                     }
 
                     if (isDuplicate) {
-                        logToHTML(`  변 ${edgeIdx}: 기존 레이어 타일과 중복 (스킵)`, '#666');
+                        logToHTML(`  변 ${edgeIdx}: 중복 타일 (스킵)`, '#666');
                         continue;
                     }
 
-                    // 새 타일 생성
-                    const newTile = new Tile(newVertices, 3, newTileId);
-                    newTile.displayNumber = allTiles.length;
-                    layer3Tiles.push(newTile);
-                    layer3TileIds.add(newTileId);
-                    allTiles.push(newTile);
+                    const layer3Tile = new Tile(newVertices, 3, newId);
+                    layer3Tile.displayNumber = allTiles.length;
+                    layer3Tiles.push(layer3Tile);
+                    allTiles.push(layer3Tile);
 
-                    logToHTML(`  ✓ 변 ${edgeIdx}: 타일 ${newTile.displayNumber} 생성!`, '#0f0');
+                    logToHTML(`  ✓ 변 ${edgeIdx}: 타일 ${layer3Tile.displayNumber} 생성!`, '#0f0');
                 }
             }
 
