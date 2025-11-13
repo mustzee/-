@@ -146,6 +146,11 @@
         현재 레이어: <span id="layer-count">0</span>개
     </div>
 
+    <div id="generation-log" style="margin-top: 20px; max-width: 900px; background: #16213e; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 11px; max-height: 400px; overflow-y: auto;">
+        <div style="color: #00d4ff; font-weight: bold; margin-bottom: 10px;">타일 생성 로그:</div>
+        <div id="log-content" style="color: #aaa; white-space: pre-wrap;"></div>
+    </div>
+
     <div id="vertex-list" style="margin-top: 20px; max-width: 800px; background: #16213e; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 11px; display: none;">
         <div style="color: #00d4ff; font-weight: bold; margin-bottom: 10px;">꼭짓점 좌표 목록:</div>
         <div id="vertex-coords" style="max-height: 200px; overflow-y: auto; color: #aaa;"></div>
@@ -169,6 +174,22 @@
         let isDragging = false;
         let lastMouseX = 0;
         let lastMouseY = 0;
+
+        // HTML 로그 함수
+        function logToHTML(message, color = '#aaa') {
+            const logContent = document.getElementById('log-content');
+            const line = document.createElement('div');
+            line.style.color = color;
+            line.textContent = message;
+            logContent.appendChild(line);
+            // 자동 스크롤
+            const logContainer = document.getElementById('generation-log');
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function clearHTMLLog() {
+            document.getElementById('log-content').innerHTML = '';
+        }
 
         // 타일 클래스 (위상 정보 포함)
         class Tile {
@@ -770,6 +791,8 @@
 
             // Layer 3: Layer 2의 각 외곽 변마다 생성
             console.log('\n--- Layer 3 타일 생성 시작 (Layer 2 외곽 변 기반) ---');
+            clearHTMLLog();
+            logToHTML('=== Layer 3 타일 생성 시작 ===', '#00d4ff');
             const layer3Tiles = [];
 
             // 각 Layer 2 타일의 외곽 변을 찾아서 Layer 3 생성
@@ -777,6 +800,7 @@
                 const {tile, newVerts} = layer2NewVertices[i];
 
                 console.log(`\n=== Layer 2 타일 ${tile.displayNumber}: 외곽 변 찾기 ===`);
+                logToHTML(`\n▶ Layer 2 타일 ${tile.displayNumber} 분석 중...`, '#88f');
 
                 // 타일의 외곽 변 찾기 (Layer 1과 완전히 공유하지 않는 변)
                 // 외곽 변 = NEW-NEW (3개) + Layer1-NEW (2개) = 5개
@@ -796,7 +820,10 @@
                     }
                 }
 
-                console.log(`  외곽 변 발견: ${outerEdges.length}개 (NEW-NEW: ${outerEdges.filter(e => e.isNewNew).length}개, Layer1-NEW: ${outerEdges.filter(e => !e.isNewNew).length}개)`);
+                const newNewCount = outerEdges.filter(e => e.isNewNew).length;
+                const layer1NewCount = outerEdges.filter(e => !e.isNewNew).length;
+                console.log(`  외곽 변 발견: ${outerEdges.length}개 (NEW-NEW: ${newNewCount}개, Layer1-NEW: ${layer1NewCount}개)`);
+                logToHTML(`Layer 2 타일 ${tile.displayNumber}: 외곽 변 ${outerEdges.length}개 (NEW-NEW: ${newNewCount}, Layer1-NEW: ${layer1NewCount})`, '#ffd700');
 
                 // 각 외곽 변마다 인접한 Layer 1 타일 찾아서 Layer 3 생성
                 for (let edgeIdx = 0; edgeIdx < outerEdges.length; edgeIdx++) {
@@ -834,9 +861,11 @@
                         if (layer3Tile) {
                             layer3Tiles.push(layer3Tile);
                             console.log(`  ✓✓✓ 타일 ${layer3Tile.displayNumber} 생성!`);
+                            logToHTML(`  ✓ 외곽 변 ${edgeIdx} (${edge.isNewNew ? 'NEW-NEW' : 'Layer1-NEW'}): 타일 ${layer3Tile.displayNumber} 생성!`, '#0f0');
                         }
                     } else {
                         console.log(`  외곽 변 ${edgeIdx}: 인접한 Layer 1 없음 (Layer 2끼리 인접)`);
+                        logToHTML(`  ✗ 외곽 변 ${edgeIdx} (${edge.isNewNew ? 'NEW-NEW' : 'Layer1-NEW'}): Layer 1 인접 없음`, '#f66');
                     }
                 }
             }
@@ -964,6 +993,7 @@
             }
 
             console.log(`\nLayer 3 완료: ${layer3Tiles.length}개 타일`);
+            logToHTML(`\n=== Layer 3 완료: ${layer3Tiles.length}개 타일 생성됨 ===`, '#0ff');
             maxLayer = 3;
         }
 
