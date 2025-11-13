@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>쌍곡 정칠각형 타일링 {7,3}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            color: white;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            max-width: 1000px;
+            width: 100%;
+        }
+
+        .canvas-wrapper {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        canvas {
+            display: block;
+            border-radius: 10px;
+            cursor: move;
+            max-width: 100%;
+            height: auto;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .control-item {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 15px;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .control-label {
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .control-content {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            height: 8px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.3);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: white;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: white;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .value-display {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 5px 12px;
+            border-radius: 5px;
+            font-weight: 600;
+            min-width: 50px;
+            text-align: center;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: translateY(-2px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button.active {
+            background: white;
+            color: #667eea;
+        }
+
+        .info-panel {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 15px;
+            border-radius: 10px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            text-align: center;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .info-label {
+            font-size: 0.85rem;
+            opacity: 0.8;
+        }
+
+        .info-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .instructions {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        .instructions strong {
+            color: #ffd700;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            .container {
+                padding: 20px;
+            }
+
+            .controls {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔷 쌍곡 정칠각형 타일링</h1>
+        <div class="subtitle">Order-3 Heptagonal Tiling {7,3} - Poincaré Disk Model</div>
+    </div>
+
+    <div class="container">
+        <div class="canvas-wrapper">
+            <canvas id="canvas" width="800" height="800"></canvas>
+        </div>
+
+        <div class="controls">
+            <div class="control-item">
+                <div class="control-label">레이어 깊이</div>
+                <div class="control-content">
+                    <input type="range" id="depth" min="0" max="4" value="2" step="1">
+                    <div class="value-display" id="depth-value">2</div>
+                </div>
+            </div>
+
+            <div class="control-item">
+                <div class="control-label">줌 레벨</div>
+                <div class="control-content">
+                    <input type="range" id="zoom" min="0.3" max="2.0" value="0.7" step="0.05">
+                    <div class="value-display" id="zoom-value">0.7</div>
+                </div>
+            </div>
+
+            <div class="control-item">
+                <div class="control-label">회전 각도</div>
+                <div class="control-content">
+                    <input type="range" id="rotation" min="0" max="360" value="0" step="5">
+                    <div class="value-display" id="rotation-value">0°</div>
+                </div>
+            </div>
+
+            <div class="control-item">
+                <div class="control-label">표시 옵션</div>
+                <div class="button-group">
+                    <button id="toggle-fill" class="active">채우기</button>
+                    <button id="toggle-edges" class="active">경계선</button>
+                    <button id="toggle-vertices">꼭짓점</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="button-group" style="justify-content: center; margin-bottom: 20px;">
+            <button id="reset">🔄 초기화</button>
+            <button id="export">💾 이미지 저장</button>
+        </div>
+
+        <div class="info-panel">
+            <div class="info-item">
+                <div class="info-label">총 타일 수</div>
+                <div class="info-value" id="tile-count">0</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">현재 레이어</div>
+                <div class="info-value" id="current-layer">0</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">꼭짓점 수</div>
+                <div class="info-value" id="vertex-count">0</div>
+            </div>
+        </div>
+
+        <div class="instructions">
+            <strong>사용 방법:</strong><br>
+            • 캔버스를 드래그하여 이동할 수 있습니다<br>
+            • 레이어 깊이를 조절하여 더 많은 타일을 생성하세요<br>
+            • 각 꼭짓점에 정확히 3개의 정칠각형이 만납니다 (쌍곡 기하학)<br>
+            • Poincaré 원판 모델에서 쌍곡 평면을 시각화합니다
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // 설정
+        let config = {
+            depth: 2,
+            zoom: 0.7,
+            rotation: 0,
+            showFill: true,
+            showEdges: true,
+            showVertices: false,
+            offsetX: 0,
+            offsetY: 0
+        };
+
+        let isDragging = false;
+        let lastX = 0, lastY = 0;
+        let tiles = [];
+
+        const width = canvas.width;
+        const height = canvas.height;
+        const centerX = width / 2;
+        const centerY = height / 2;
+        const diskRadius = Math.min(width, height) * 0.42;
+
+        // 복소수 연산
+        class Complex {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+            }
+
+            add(other) {
+                return new Complex(this.x + other.x, this.y + other.y);
+            }
+
+            sub(other) {
+                return new Complex(this.x - other.x, this.y - other.y);
+            }
+
+            mul(other) {
+                return new Complex(
+                    this.x * other.x - this.y * other.y,
+                    this.x * other.y + this.y * other.x
+                );
+            }
+
+            div(other) {
+                const d = other.x * other.x + other.y * other.y;
+                return new Complex(
+                    (this.x * other.x + this.y * other.y) / d,
+                    (this.y * other.x - this.x * other.y) / d
+                );
+            }
+
+            abs() {
+                return Math.sqrt(this.x * this.x + this.y * this.y);
+            }
+
+            conjugate() {
+                return new Complex(this.x, -this.y);
+            }
+
+            static fromPolar(r, theta) {
+                return new Complex(r * Math.cos(theta), r * Math.sin(theta));
+            }
+
+            dist(other) {
+                const dx = this.x - other.x;
+                const dy = this.y - other.y;
+                return Math.sqrt(dx * dx + dy * dy);
+            }
+        }
+
+        // Möbius 변환 (쌍곡 이동)
+        function mobiusTransform(z, a) {
+            if (a.abs() < 0.0001) return z;
+            const numerator = z.add(a);
+            const denominator = new Complex(1, 0).add(a.conjugate().mul(z));
+            return numerator.div(denominator);
+        }
+
+        // 정칠각형 반지름 계산
+        function getHeptagonRadius() {
+            const p = 7, q = 3;
+            const coshR = Math.cos(Math.PI / q) / Math.sin(Math.PI / p);
+            const r = Math.acosh(coshR);
+            return Math.tanh(r / 2);
+        }
+
+        const HEPT_RADIUS = getHeptagonRadius();
+
+        // 정칠각형 생성
+        function createHeptagon(center, startAngle = 0) {
+            const vertices = [];
+            for (let i = 0; i < 7; i++) {
+                const angle = 2 * Math.PI * i / 7 + startAngle;
+                const localVertex = Complex.fromPolar(HEPT_RADIUS, angle);
+                vertices.push(mobiusTransform(localVertex, center));
+            }
+            return vertices;
+        }
+
+        // 측지선 반사
+        function reflectAcrossGeodesic(point, edge1, edge2) {
+            const p1sq = edge1.x * edge1.x + edge1.y * edge1.y;
+            const p2sq = edge2.x * edge2.x + edge2.y * edge2.y;
+            const denom = 2 * (edge1.x * edge2.y - edge2.x * edge1.y);
+
+            if (Math.abs(denom) < 0.001) {
+                // 직선 반사
+                const angle = Math.atan2(edge1.y, edge1.x);
+                const cos = Math.cos(-angle), sin = Math.sin(-angle);
+                const rotated = new Complex(
+                    point.x * cos - point.y * sin,
+                    point.x * sin + point.y * cos
+                );
+                const reflected = new Complex(rotated.x, -rotated.y);
+                const cos2 = Math.cos(angle), sin2 = Math.sin(angle);
+                return new Complex(
+                    reflected.x * cos2 - reflected.y * sin2,
+                    reflected.x * sin2 + reflected.y * cos2
+                );
+            }
+
+            // 원 반사
+            const cx = (edge2.y * (1 - p1sq) - edge1.y * (1 - p2sq)) / denom;
+            const cy = (edge1.x * (1 - p2sq) - edge2.x * (1 - p1sq)) / denom;
+            const radiusSq = (edge1.x - cx) ** 2 + (edge1.y - cy) ** 2;
+
+            const shifted = point.sub(new Complex(cx, cy));
+            const distSq = shifted.x ** 2 + shifted.y ** 2;
+            if (distSq < 0.00001) return point;
+
+            const factor = radiusSq / distSq;
+            return new Complex(
+                shifted.x * factor + cx,
+                shifted.y * factor + cy
+            );
+        }
+
+        // 인접 타일 생성
+        function createAdjacentTile(vertices, edgeIndex) {
+            const edge1 = vertices[edgeIndex];
+            const edge2 = vertices[(edgeIndex + 1) % 7];
+
+            return vertices.map(v => reflectAcrossGeodesic(v, edge1, edge2));
+        }
+
+        // 타일 ID 생성
+        function getTileId(vertices) {
+            let cx = 0, cy = 0;
+            vertices.forEach(v => {
+                cx += v.x;
+                cy += v.y;
+            });
+            return `${(cx / 7).toFixed(6)},${(cy / 7).toFixed(6)}`;
+        }
+
+        // BFS로 타일 생성
+        function generateTiles(maxDepth) {
+            tiles = [];
+            const tileMap = new Set();
+            const queue = [];
+
+            // 중심 타일
+            const centerTile = {
+                vertices: createHeptagon(new Complex(0, 0), -Math.PI / 2 + config.rotation * Math.PI / 180),
+                depth: 0
+            };
+            const centerId = getTileId(centerTile.vertices);
+
+            tiles.push(centerTile);
+            tileMap.add(centerId);
+            queue.push(centerTile);
+
+            // BFS 확장
+            while (queue.length > 0) {
+                const current = queue.shift();
+
+                if (current.depth >= maxDepth) continue;
+
+                for (let edgeIdx = 0; edgeIdx < 7; edgeIdx++) {
+                    const adjVertices = createAdjacentTile(current.vertices, edgeIdx);
+
+                    // 중심점이 디스크 내부에 있는지 확인
+                    let cx = 0, cy = 0;
+                    adjVertices.forEach(v => {
+                        cx += v.x;
+                        cy += v.y;
+                    });
+                    const center = new Complex(cx / 7, cy / 7);
+
+                    if (center.abs() > 0.95) continue;
+
+                    const adjId = getTileId(adjVertices);
+                    if (tileMap.has(adjId)) continue;
+
+                    const adjTile = {
+                        vertices: adjVertices,
+                        depth: current.depth + 1
+                    };
+
+                    tiles.push(adjTile);
+                    tileMap.add(adjId);
+                    queue.push(adjTile);
+                }
+            }
+        }
+
+        // 화면 좌표 변환
+        function toScreen(z) {
+            return {
+                x: centerX + z.x * diskRadius * config.zoom + config.offsetX,
+                y: centerY - z.y * diskRadius * config.zoom + config.offsetY
+            };
+        }
+
+        // 측지선 그리기
+        function drawGeodesic(p1, p2, color, width) {
+            const s1 = toScreen(p1);
+            const s2 = toScreen(p2);
+
+            const cross = p1.x * p2.y - p1.y * p2.x;
+
+            // 거의 직선인 경우
+            if (Math.abs(cross) < 0.01) {
+                ctx.beginPath();
+                ctx.moveTo(s1.x, s1.y);
+                ctx.lineTo(s2.x, s2.y);
+                ctx.strokeStyle = color;
+                ctx.lineWidth = width;
+                ctx.stroke();
+                return;
+            }
+
+            // 원호로 그리기
+            const p1sq = p1.x * p1.x + p1.y * p1.y;
+            const p2sq = p2.x * p2.x + p2.y * p2.y;
+            const denom = 2 * (p1.x * p2.y - p2.x * p1.y);
+
+            if (Math.abs(denom) < 0.0001) return;
+
+            const cx = (p2.y * (1 - p1sq) - p1.y * (1 - p2sq)) / denom;
+            const cy = (p1.x * (1 - p2sq) - p2.x * (1 - p1sq)) / denom;
+
+            const sc = toScreen(new Complex(cx, cy));
+            const radius = Math.sqrt((s1.x - sc.x) ** 2 + (s1.y - sc.y) ** 2);
+
+            const a1 = Math.atan2(s1.y - sc.y, s1.x - sc.x);
+            const a2 = Math.atan2(s2.y - sc.y, s2.x - sc.x);
+
+            let da = a2 - a1;
+            while (da > Math.PI) da -= 2 * Math.PI;
+            while (da < -Math.PI) da += 2 * Math.PI;
+
+            ctx.beginPath();
+            ctx.arc(sc.x, sc.y, radius, a1, a1 + da, da < 0);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = width;
+            ctx.stroke();
+        }
+
+        // 타일 색상
+        const colors = [
+            '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A',
+            '#98D8C8', '#F7B731', '#5F27CD', '#00D2FF'
+        ];
+
+        // 렌더링
+        function render() {
+            // 배경
+            ctx.fillStyle = '#f8f9fa';
+            ctx.fillRect(0, 0, width, height);
+
+            // Poincaré 원판 경계
+            ctx.beginPath();
+            ctx.arc(
+                centerX + config.offsetX,
+                centerY + config.offsetY,
+                diskRadius * config.zoom,
+                0,
+                2 * Math.PI
+            );
+            ctx.strokeStyle = '#2c3e50';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+
+            // 타일 그리기
+            let uniqueVertices = new Set();
+
+            tiles.forEach((tile, index) => {
+                const color = colors[tile.depth % colors.length];
+
+                // 채우기
+                if (config.showFill) {
+                    ctx.beginPath();
+                    const s0 = toScreen(tile.vertices[0]);
+                    ctx.moveTo(s0.x, s0.y);
+                    for (let i = 1; i < 7; i++) {
+                        const s = toScreen(tile.vertices[i]);
+                        ctx.lineTo(s.x, s.y);
+                    }
+                    ctx.closePath();
+                    ctx.fillStyle = color + '40';
+                    ctx.fill();
+                }
+
+                // 경계선
+                if (config.showEdges) {
+                    for (let i = 0; i < 7; i++) {
+                        drawGeodesic(
+                            tile.vertices[i],
+                            tile.vertices[(i + 1) % 7],
+                            color,
+                            2
+                        );
+                    }
+                }
+
+                // 꼭짓점
+                if (config.showVertices) {
+                    tile.vertices.forEach(v => {
+                        const vid = `${v.x.toFixed(4)},${v.y.toFixed(4)}`;
+                        uniqueVertices.add(vid);
+
+                        const s = toScreen(v);
+                        ctx.beginPath();
+                        ctx.arc(s.x, s.y, 4, 0, 2 * Math.PI);
+                        ctx.fillStyle = '#2c3e50';
+                        ctx.fill();
+                        ctx.strokeStyle = '#ffffff';
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                    });
+                }
+            });
+
+            // 통계 업데이트
+            document.getElementById('tile-count').textContent = tiles.length;
+            document.getElementById('current-layer').textContent = config.depth;
+            document.getElementById('vertex-count').textContent = uniqueVertices.size;
+        }
+
+        // 초기화
+        function init() {
+            generateTiles(config.depth);
+            render();
+        }
+
+        // 컨트롤 이벤트
+        document.getElementById('depth').addEventListener('input', (e) => {
+            config.depth = parseInt(e.target.value);
+            document.getElementById('depth-value').textContent = config.depth;
+            generateTiles(config.depth);
+            render();
+        });
+
+        document.getElementById('zoom').addEventListener('input', (e) => {
+            config.zoom = parseFloat(e.target.value);
+            document.getElementById('zoom-value').textContent = config.zoom.toFixed(2);
+            render();
+        });
+
+        document.getElementById('rotation').addEventListener('input', (e) => {
+            config.rotation = parseInt(e.target.value);
+            document.getElementById('rotation-value').textContent = config.rotation + '°';
+            generateTiles(config.depth);
+            render();
+        });
+
+        document.getElementById('toggle-fill').addEventListener('click', (e) => {
+            config.showFill = !config.showFill;
+            e.target.classList.toggle('active');
+            render();
+        });
+
+        document.getElementById('toggle-edges').addEventListener('click', (e) => {
+            config.showEdges = !config.showEdges;
+            e.target.classList.toggle('active');
+            render();
+        });
+
+        document.getElementById('toggle-vertices').addEventListener('click', (e) => {
+            config.showVertices = !config.showVertices;
+            e.target.classList.toggle('active');
+            render();
+        });
+
+        document.getElementById('reset').addEventListener('click', () => {
+            config = {
+                depth: 2,
+                zoom: 0.7,
+                rotation: 0,
+                showFill: true,
+                showEdges: true,
+                showVertices: false,
+                offsetX: 0,
+                offsetY: 0
+            };
+
+            document.getElementById('depth').value = 2;
+            document.getElementById('depth-value').textContent = '2';
+            document.getElementById('zoom').value = 0.7;
+            document.getElementById('zoom-value').textContent = '0.7';
+            document.getElementById('rotation').value = 0;
+            document.getElementById('rotation-value').textContent = '0°';
+
+            document.getElementById('toggle-fill').classList.add('active');
+            document.getElementById('toggle-edges').classList.add('active');
+            document.getElementById('toggle-vertices').classList.remove('active');
+
+            generateTiles(config.depth);
+            render();
+        });
+
+        document.getElementById('export').addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = 'heptagonal-tiling.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        });
+
+        // 마우스 드래그
+        canvas.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            lastX = e.clientX;
+            lastY = e.clientY;
+            canvas.style.cursor = 'grabbing';
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                config.offsetX += e.clientX - lastX;
+                config.offsetY += e.clientY - lastY;
+                lastX = e.clientX;
+                lastY = e.clientY;
+                render();
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            isDragging = false;
+            canvas.style.cursor = 'move';
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            isDragging = false;
+            canvas.style.cursor = 'move';
+        });
+
+        // 터치 지원
+        let lastTouchX = 0, lastTouchY = 0;
+
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            lastTouchX = touch.clientX;
+            lastTouchY = touch.clientY;
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            config.offsetX += touch.clientX - lastTouchX;
+            config.offsetY += touch.clientY - lastTouchY;
+            lastTouchX = touch.clientX;
+            lastTouchY = touch.clientY;
+            render();
+        });
+
+        // 시작
+        init();
+    </script>
+</body>
+</html>
