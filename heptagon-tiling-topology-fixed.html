@@ -769,38 +769,50 @@
             }
 
             // Layer 3: Layer 1과 Layer 2 사이의 간격을 채움
-            console.log('\n--- Layer 3 타일 생성 시작 (Layer 1-2 간격 채우기) ---');
+            console.log('\n--- Layer 3 타일 생성 시작 (Layer 1 각 변마다 체크) ---');
             const layer3Tiles = [];
 
-            // 각 Layer 1 타일마다 양옆 Layer 2 타일과의 간격에 Layer 3 생성
-            for (let gapIdx = 0; gapIdx < 7; gapIdx++) {
-                const layer1Tile = layer1Tiles[gapIdx];
-                const layer2Left = layer2Tiles[(gapIdx + 6) % 7];  // 왼쪽 Layer 2 (이전 간격)
-                const layer2Right = layer2Tiles[gapIdx];           // 오른쪽 Layer 2 (현재 간격)
+            // 각 Layer 1 타일의 각 변마다 인접한 Layer 2 찾아서 간격 채우기
+            for (let l1Idx = 0; l1Idx < 7; l1Idx++) {
+                const layer1Tile = layer1Tiles[l1Idx];
 
-                console.log(`\n=== Layer 1 타일 ${gapIdx}: 양옆 Layer 2와의 간격 ===`);
-                console.log(`  왼쪽 Layer 2: 타일 ${layer2Left.displayNumber}`);
-                console.log(`  오른쪽 Layer 2: 타일 ${layer2Right.displayNumber}`);
+                console.log(`\n=== Layer 1 타일 ${l1Idx}: 각 변 체크 ===`);
 
-                // 1. Layer 1과 왼쪽 Layer 2 사이 간격에 Layer 3 생성
-                const sharedLeft = findSharedVertex(layer1Tile, layer2Left);
-                if (sharedLeft) {
-                    console.log(`\n  왼쪽 간격: 공유 꼭짓점 ${getVertexLabel(sharedLeft)}`);
-                    const layer3Left = createLayer3Tile(layer1Tile, layer2Left, sharedLeft);
-                    if (layer3Left) {
-                        layer3Tiles.push(layer3Left);
-                        console.log(`  ✓✓✓ 타일 ${layer3Left.displayNumber} 생성 (왼쪽 간격)`);
-                    }
-                }
+                // Layer 1 타일의 각 변 순회
+                for (let edgeIdx = 0; edgeIdx < 7; edgeIdx++) {
+                    const v1 = layer1Tile.vertices[edgeIdx];
+                    const v2 = layer1Tile.vertices[(edgeIdx + 1) % 7];
 
-                // 2. Layer 1과 오른쪽 Layer 2 사이 간격에 Layer 3 생성
-                const sharedRight = findSharedVertex(layer1Tile, layer2Right);
-                if (sharedRight) {
-                    console.log(`\n  오른쪽 간격: 공유 꼭짓점 ${getVertexLabel(sharedRight)}`);
-                    const layer3Right = createLayer3Tile(layer1Tile, layer2Right, sharedRight);
-                    if (layer3Right) {
-                        layer3Tiles.push(layer3Right);
-                        console.log(`  ✓✓✓ 타일 ${layer3Right.displayNumber} 생성 (오른쪽 간격)`);
+                    // 중심 꼭짓점이 포함된 변은 스킵
+                    if (isCenterVertex(v1) || isCenterVertex(v2)) continue;
+
+                    // 양옆 Layer 1 타일과 공유하는 변인지 확인
+                    const prevL1 = layer1Tiles[(l1Idx + 6) % 7];
+                    const nextL1 = layer1Tiles[(l1Idx + 1) % 7];
+
+                    const sharedWithPrev = prevL1.vertices.some(v => verticesMatch(v, v1, 0.015) || verticesMatch(v, v2, 0.015));
+                    const sharedWithNext = nextL1.vertices.some(v => verticesMatch(v, v1, 0.015) || verticesMatch(v, v2, 0.015));
+
+                    // Layer 1 타일들과 공유하는 변은 스킵
+                    if (sharedWithPrev && sharedWithNext) continue;
+
+                    // 이 변 근처의 Layer 2 타일들 찾기
+                    for (let l2Tile of layer2Tiles) {
+                        // Layer 2 타일이 이 변의 꼭짓점 중 하나라도 공유하는지 확인
+                        const sharesV1 = l2Tile.vertices.some(v => verticesMatch(v, v1, 0.015));
+                        const sharesV2 = l2Tile.vertices.some(v => verticesMatch(v, v2, 0.015));
+
+                        // 두 꼭짓점 중 하나만 공유하면 간격이 있음 → Layer 3 생성
+                        if ((sharesV1 && !sharesV2) || (!sharesV1 && sharesV2)) {
+                            const sharedVertex = sharesV1 ? v1 : v2;
+                            console.log(`\n  변 ${edgeIdx}: Layer 2 타일 ${l2Tile.displayNumber}와 간격 (공유: ${getVertexLabel(sharedVertex)})`);
+
+                            const layer3Tile = createLayer3Tile(layer1Tile, l2Tile, sharedVertex);
+                            if (layer3Tile) {
+                                layer3Tiles.push(layer3Tile);
+                                console.log(`  ✓✓✓ 타일 ${layer3Tile.displayNumber} 생성!`);
+                            }
+                        }
                     }
                 }
             }
