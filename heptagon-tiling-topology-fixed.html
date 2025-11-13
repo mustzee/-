@@ -810,16 +810,13 @@
 
                 console.log(`  외곽 변 발견: ${outerEdges.length}개`);
 
-                // 각 외곽 변마다 Layer 3 타일 생성 (reflect 방식 - Layer 1과 동일)
+                // 각 외곽 변마다 Layer 3 타일 생성 (makeAdjacent 방식 - Layer 1과 동일)
                 for (let edgeIdx = 0; edgeIdx < outerEdges.length; edgeIdx++) {
                     const edge = outerEdges[edgeIdx];
-                    console.log(`\n  --- 외곽 변 ${edgeIdx}: ${getVertexLabel(edge.v1)} - ${getVertexLabel(edge.v2)} ---`);
+                    console.log(`\n  --- 외곽 변 ${edgeIdx}: ${getVertexLabel(edge.v1)} - ${getVertexLabel(edge.v2)} (인덱스 ${edge.startIdx}) ---`);
 
-                    // Layer 2 타일을 외곽 변에 대해 반사 (Layer 1 생성 방식과 동일)
-                    const newVertices = [];
-                    for (let v of tile.vertices) {
-                        newVertices.push(reflect(v, edge.v1, edge.v2));
-                    }
+                    // Layer 2 타일을 외곽 변에 대해 반사 (makeAdjacent 사용)
+                    const newVertices = makeAdjacent(tile.vertices, edge.startIdx);
 
                     // 중심 거리 확인
                     const newCenter = newVertices.reduce((s, v) => cAdd(s, v), {x:0, y:0});
