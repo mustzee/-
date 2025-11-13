@@ -768,51 +768,74 @@
                 layer2NewVertices.push({tile, newVerts});
             }
 
-            // Layer 3: Layer 1과 Layer 2 사이의 간격을 채움
-            console.log('\n--- Layer 3 타일 생성 시작 (Layer 1 각 변마다 체크) ---');
+            // Layer 3: Layer 2의 각 외곽 변마다 생성
+            console.log('\n--- Layer 3 타일 생성 시작 (Layer 2 외곽 변 기반) ---');
             const layer3Tiles = [];
 
-            // 각 Layer 1 타일의 각 변마다 인접한 Layer 2 찾아서 간격 채우기
-            for (let l1Idx = 0; l1Idx < 7; l1Idx++) {
-                const layer1Tile = layer1Tiles[l1Idx];
+            // 각 Layer 2 타일의 외곽 변을 찾아서 Layer 3 생성
+            for (let i = 0; i < layer2NewVertices.length; i++) {
+                const {tile, newVerts} = layer2NewVertices[i];
 
-                console.log(`\n=== Layer 1 타일 ${l1Idx}: 각 변 체크 ===`);
+                console.log(`\n=== Layer 2 타일 ${tile.displayNumber}: 외곽 변 찾기 ===`);
 
-                // Layer 1 타일의 각 변 순회
-                for (let edgeIdx = 0; edgeIdx < 7; edgeIdx++) {
-                    const v1 = layer1Tile.vertices[edgeIdx];
-                    const v2 = layer1Tile.vertices[(edgeIdx + 1) % 7];
+                // 타일의 꼭짓점 순서에서 연속된 새 꼭짓점 쌍 찾기 (외곽 변)
+                const outerEdges = [];
+                for (let k = 0; k < tile.vertices.length; k++) {
+                    const curr = tile.vertices[k];
+                    const next = tile.vertices[(k + 1) % tile.vertices.length];
 
-                    // 중심 꼭짓점이 포함된 변은 스킵
-                    if (isCenterVertex(v1) || isCenterVertex(v2)) continue;
+                    if (isCenterVertex(curr) || isCenterVertex(next)) continue;
 
-                    // 양옆 Layer 1 타일과 공유하는 변인지 확인
-                    const prevL1 = layer1Tiles[(l1Idx + 6) % 7];
-                    const nextL1 = layer1Tiles[(l1Idx + 1) % 7];
+                    // 둘 다 새 꼭짓점인지 확인
+                    const currIsNew = newVerts.some(v => verticesMatch(v, curr, 0.03));
+                    const nextIsNew = newVerts.some(v => verticesMatch(v, next, 0.03));
 
-                    const sharedWithPrev = prevL1.vertices.some(v => verticesMatch(v, v1, 0.015) || verticesMatch(v, v2, 0.015));
-                    const sharedWithNext = nextL1.vertices.some(v => verticesMatch(v, v1, 0.015) || verticesMatch(v, v2, 0.015));
+                    if (currIsNew && nextIsNew) {
+                        outerEdges.push({v1: curr, v2: next, startIdx: k});
+                    }
+                }
 
-                    // Layer 1 타일들과 공유하는 변은 스킵
-                    if (sharedWithPrev && sharedWithNext) continue;
+                console.log(`  외곽 변 발견: ${outerEdges.length}개`);
 
-                    // 이 변 근처의 Layer 2 타일들 찾기
-                    for (let l2Tile of layer2Tiles) {
-                        // Layer 2 타일이 이 변의 꼭짓점 중 하나라도 공유하는지 확인
-                        const sharesV1 = l2Tile.vertices.some(v => verticesMatch(v, v1, 0.015));
-                        const sharesV2 = l2Tile.vertices.some(v => verticesMatch(v, v2, 0.015));
+                // 각 외곽 변마다 인접한 Layer 1 타일 찾아서 Layer 3 생성
+                for (let edgeIdx = 0; edgeIdx < outerEdges.length; edgeIdx++) {
+                    const edge = outerEdges[edgeIdx];
 
-                        // 두 꼭짓점 중 하나만 공유하면 간격이 있음 → Layer 3 생성
-                        if ((sharesV1 && !sharesV2) || (!sharesV1 && sharesV2)) {
-                            const sharedVertex = sharesV1 ? v1 : v2;
-                            console.log(`\n  변 ${edgeIdx}: Layer 2 타일 ${l2Tile.displayNumber}와 간격 (공유: ${getVertexLabel(sharedVertex)})`);
+                    // 이 변과 꼭짓점을 공유하는 Layer 1 타일 찾기
+                    let adjacentLayer1 = null;
+                    let sharedVertex = null;
 
-                            const layer3Tile = createLayer3Tile(layer1Tile, l2Tile, sharedVertex);
-                            if (layer3Tile) {
-                                layer3Tiles.push(layer3Tile);
-                                console.log(`  ✓✓✓ 타일 ${layer3Tile.displayNumber} 생성!`);
+                    for (let l1Tile of layer1Tiles) {
+                        // v1을 공유하는지 확인
+                        if (l1Tile.vertices.some(v => verticesMatch(v, edge.v1, 0.015) && !isCenterVertex(v))) {
+                            // v2는 공유하지 않아야 함 (간격이 있어야 함)
+                            if (!l1Tile.vertices.some(v => verticesMatch(v, edge.v2, 0.015))) {
+                                adjacentLayer1 = l1Tile;
+                                sharedVertex = edge.v1;
+                                break;
                             }
                         }
+                        // v2를 공유하는지 확인
+                        if (l1Tile.vertices.some(v => verticesMatch(v, edge.v2, 0.015) && !isCenterVertex(v))) {
+                            // v1은 공유하지 않아야 함
+                            if (!l1Tile.vertices.some(v => verticesMatch(v, edge.v1, 0.015))) {
+                                adjacentLayer1 = l1Tile;
+                                sharedVertex = edge.v2;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (adjacentLayer1 && sharedVertex) {
+                        console.log(`\n  외곽 변 ${edgeIdx}: Layer 1 타일 ${layer1Tiles.indexOf(adjacentLayer1)}와 간격 (공유: ${getVertexLabel(sharedVertex)})`);
+
+                        const layer3Tile = createLayer3Tile(adjacentLayer1, tile, sharedVertex);
+                        if (layer3Tile) {
+                            layer3Tiles.push(layer3Tile);
+                            console.log(`  ✓✓✓ 타일 ${layer3Tile.displayNumber} 생성!`);
+                        }
+                    } else {
+                        console.log(`  외곽 변 ${edgeIdx}: 인접한 Layer 1 없음 (Layer 2끼리 인접)`);
                     }
                 }
             }
