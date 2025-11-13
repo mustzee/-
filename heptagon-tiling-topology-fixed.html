@@ -778,7 +778,8 @@
 
                 console.log(`\n=== Layer 2 타일 ${tile.displayNumber}: 외곽 변 찾기 ===`);
 
-                // 타일의 꼭짓점 순서에서 연속된 새 꼭짓점 쌍 찾기 (외곽 변)
+                // 타일의 외곽 변 찾기 (Layer 1과 완전히 공유하지 않는 변)
+                // 외곽 변 = NEW-NEW (3개) + Layer1-NEW (2개) = 5개
                 const outerEdges = [];
                 for (let k = 0; k < tile.vertices.length; k++) {
                     const curr = tile.vertices[k];
@@ -786,16 +787,16 @@
 
                     if (isCenterVertex(curr) || isCenterVertex(next)) continue;
 
-                    // 둘 다 새 꼭짓점인지 확인
                     const currIsNew = newVerts.some(v => verticesMatch(v, curr, 0.03));
                     const nextIsNew = newVerts.some(v => verticesMatch(v, next, 0.03));
 
-                    if (currIsNew && nextIsNew) {
-                        outerEdges.push({v1: curr, v2: next, startIdx: k});
+                    // NEW-NEW 변 또는 Layer1-NEW 변 (둘 중 하나라도 NEW면 외곽 변)
+                    if (currIsNew || nextIsNew) {
+                        outerEdges.push({v1: curr, v2: next, startIdx: k, isNewNew: currIsNew && nextIsNew});
                     }
                 }
 
-                console.log(`  외곽 변 발견: ${outerEdges.length}개`);
+                console.log(`  외곽 변 발견: ${outerEdges.length}개 (NEW-NEW: ${outerEdges.filter(e => e.isNewNew).length}개, Layer1-NEW: ${outerEdges.filter(e => !e.isNewNew).length}개)`);
 
                 // 각 외곽 변마다 인접한 Layer 1 타일 찾아서 Layer 3 생성
                 for (let edgeIdx = 0; edgeIdx < outerEdges.length; edgeIdx++) {
