@@ -842,7 +842,7 @@
                     // 중점에서 바깥쪽으로 이동
                     const midDistance = cAbs(midpoint);
                     const midAngle = Math.atan2(midpoint.y, midpoint.x);
-                    const pushOutFactor = 1.15;  // 1.4에서 낮춤 - 디스크 경계 내부로
+                    const pushOutFactor = 1.341499;  // 최적값: 겹치지만 원하는 그림에 가장 근접
                     const newCenterDistance = midDistance * pushOutFactor;
                     const newCenterPoint = {
                         x: newCenterDistance * Math.cos(midAngle),
