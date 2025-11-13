@@ -834,23 +834,34 @@
                         let adjacentLayer2 = null;
                         let sharedVertex = null;
 
+                        console.log(`\n  외곽 변 ${edgeIdx} (NEW-NEW): v1=(${edge.v1.x.toFixed(3)}, ${edge.v1.y.toFixed(3)}), v2=(${edge.v2.x.toFixed(3)}, ${edge.v2.y.toFixed(3)})`);
+
                         // 이 변을 공유하는 다른 Layer 2 타일 찾기
+                        // 변을 공유하려면 두 정점이 연속된 변으로 있어야 함
                         for (let j = 0; j < layer2NewVertices.length; j++) {
                             if (j === i) continue; // 자기 자신 제외
 
                             const otherTile = layer2NewVertices[j].tile;
 
-                            // edge의 두 꼭짓점이 모두 otherTile에 있는지 확인
-                            const v1InOther = otherTile.vertices.some(v => verticesMatch(v, edge.v1, 0.015));
-                            const v2InOther = otherTile.vertices.some(v => verticesMatch(v, edge.v2, 0.015));
+                            // otherTile의 각 변을 확인
+                            for (let k = 0; k < otherTile.vertices.length; k++) {
+                                const ov1 = otherTile.vertices[k];
+                                const ov2 = otherTile.vertices[(k + 1) % otherTile.vertices.length];
 
-                            if (v1InOther && v2InOther) {
-                                // 변을 공유하는 인접 타일 발견!
-                                adjacentLayer2 = otherTile;
-                                // 공유 정점 선택 (v1 사용)
-                                sharedVertex = edge.v1;
-                                break;
+                                // edge와 otherTile의 변이 같은지 확인 (순서 무관)
+                                const match1 = verticesMatch(edge.v1, ov1, 0.03) && verticesMatch(edge.v2, ov2, 0.03);
+                                const match2 = verticesMatch(edge.v1, ov2, 0.03) && verticesMatch(edge.v2, ov1, 0.03);
+
+                                if (match1 || match2) {
+                                    // 변을 공유하는 인접 타일 발견!
+                                    adjacentLayer2 = otherTile;
+                                    sharedVertex = edge.v1;
+                                    console.log(`    → Layer 2 타일 ${otherTile.displayNumber}와 변 공유 발견!`);
+                                    break;
+                                }
                             }
+
+                            if (adjacentLayer2) break;
                         }
 
                         if (adjacentLayer2 && sharedVertex) {
