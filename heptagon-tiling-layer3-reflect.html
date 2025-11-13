@@ -799,9 +799,9 @@
             // 각 Layer 2 타일의 각 변에 대해 반사
             for (let i = 0; i < layer2Tiles.length; i++) {
                 const sourceTile = layer2Tiles[i];
-                logToHTML(`▶ Layer 2 타일 ${sourceTile.displayNumber} → 7개 변 반사`, '#88f');
+                logToHTML(`▶ Layer 2 타일 ${sourceTile.displayNumber} → 변 0,1,2,3 반사`, '#88f');
 
-                for (let edgeIdx = 0; edgeIdx < 7; edgeIdx++) {
+                for (let edgeIdx = 0; edgeIdx < 4; edgeIdx++) {
                     // 이 변을 기준으로 타일 반사
                     const newVertices = makeAdjacent(sourceTile.vertices, edgeIdx);
                     const newTileId = getTileId(newVertices);
