@@ -476,19 +476,36 @@
         function createTileFromEdge(sharedV1, sharedV2, centerX, centerY, size, depth, color) {
             const vertices = [];
 
-            // 공유하는 변의 두 점을 포함
+            // 공유하는 변의 길이
+            const edgeLength = Math.sqrt(
+                (sharedV2.x - sharedV1.x) ** 2 +
+                (sharedV2.y - sharedV1.y) ** 2
+            );
+
+            // 공유하는 변의 방향
+            const edgeAngle = Math.atan2(sharedV2.y - sharedV1.y, sharedV2.x - sharedV1.x);
+
+            // 칠각형의 내각 (약 128.57도)
+            const interiorAngle = (5 * Math.PI) / 7; // (7-2)*180/7 in radians
+
+            // 첫 번째 점 (공유 변의 시작)
             vertices.push({x: sharedV1.x, y: sharedV1.y});
+
+            // 두 번째 점 (공유 변의 끝)
             vertices.push({x: sharedV2.x, y: sharedV2.y});
 
-            // 나머지 5개 점 생성
-            const edgeAngle = Math.atan2(sharedV2.y - sharedV1.y, sharedV2.x - sharedV1.x);
-            const startAngle = edgeAngle + Math.PI / 7; // 칠각형 각도 조정
+            // 나머지 5개 점을 순차적으로 생성
+            let currentAngle = edgeAngle; // 현재 방향
 
             for (let i = 2; i < 7; i++) {
-                const angle = startAngle + (2 * Math.PI * (i - 1) / 7);
+                // 다음 변의 방향 = 현재 방향 + (180도 - 내각)
+                currentAngle += Math.PI - interiorAngle;
+
+                // 이전 점에서 edgeLength만큼 떨어진 다음 점
+                const prevVertex = vertices[vertices.length - 1];
                 vertices.push({
-                    x: centerX + size * Math.cos(angle),
-                    y: centerY + size * Math.sin(angle)
+                    x: prevVertex.x + edgeLength * Math.cos(currentAngle),
+                    y: prevVertex.y + edgeLength * Math.sin(currentAngle)
                 });
             }
 
