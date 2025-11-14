@@ -441,8 +441,9 @@
 
                 // 모든 결과를 합치기
                 for (const result of mappedResults) {
-                    for (const tiles of result) {
-                        for (const tile of tiles) {
+                    // result는 이미 타일 배열
+                    if (Array.isArray(result)) {
+                        for (const tile of result) {
                             const tileId = this.getTileId(tile.vertices);
 
                             // 중복 제거
