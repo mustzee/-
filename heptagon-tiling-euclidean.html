@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>칠각형 타일링 - 유클리드 평면</title>
+    <title>칠각형 타일링 - 각도 조정</title>
     <style>
         * {
             margin: 0;
@@ -63,6 +63,10 @@
             cursor: move;
             max-width: 100%;
             height: auto;
+        }
+
+        canvas.dragging-vertex {
+            cursor: crosshair;
         }
 
         .controls {
@@ -208,7 +212,7 @@
 <body>
     <div class="header">
         <h1>🔷 칠각형 타일링</h1>
-        <div class="subtitle">유클리드 평면 - 각도 조정된 칠각형 타일링</div>
+        <div class="subtitle">각도 조정된 칠각형 - 드래그로 점 수정 가능</div>
     </div>
 
     <div class="container">
@@ -246,7 +250,8 @@
                 <div class="button-group">
                     <button id="toggle-fill" class="active">채우기</button>
                     <button id="toggle-edges" class="active">경계선</button>
-                    <button id="toggle-vertices">꼭짓점</button>
+                    <button id="toggle-vertices" class="active">꼭짓점</button>
+                    <button id="toggle-edit-mode">편집 모드</button>
                 </div>
             </div>
         </div>
@@ -266,17 +271,17 @@
                 <div class="info-value" id="current-layer">0</div>
             </div>
             <div class="info-item">
-                <div class="info-label">꼭짓점 수</div>
-                <div class="info-value" id="vertex-count">0</div>
+                <div class="info-label">편집 모드</div>
+                <div class="info-value" id="edit-status">OFF</div>
             </div>
         </div>
 
         <div class="instructions">
             <strong>사용 방법:</strong><br>
             • 캔버스를 드래그하여 이동할 수 있습니다<br>
-            • 레이어 깊이를 조절하여 더 많은 타일을 생성하세요<br>
-            • 각 꼭짓점에서 만나는 각의 합이 정확히 360도가 됩니다<br>
-            • 유클리드 평면에서 빈틈없이 맞물리는 칠각형 타일링입니다
+            • 편집 모드를 켜고 꼭짓점을 드래그하여 위치를 조정하세요<br>
+            • 각 타일에서 특정 꼭짓점은 120° (3개 만나면 360°)<br>
+            • 나머지 꼭짓점 각도는 총 900°가 되도록 자동 분배됩니다
         </div>
     </div>
 
@@ -291,12 +296,14 @@
             rotation: 0,
             showFill: true,
             showEdges: true,
-            showVertices: false,
+            showVertices: true,
+            editMode: false,
             offsetX: 0,
             offsetY: 0
         };
 
         let isDragging = false;
+        let draggedVertex = null;
         let lastX = 0, lastY = 0;
         let tiles = [];
 
@@ -305,92 +312,62 @@
         const centerX = width / 2;
         const centerY = height / 2;
 
-        // 칠각형 타일 클래스
-        class HeptagonTile {
-            constructor(x, y, size, rotation, type = 'center') {
-                this.x = x;
-                this.y = y;
-                this.size = size;
-                this.rotation = rotation;
-                this.type = type;
-                this.vertices = this.calculateVertices();
-            }
+        // 각도 조정된 칠각형 생성
+        function createAdjustedHeptagon(cx, cy, size, rotation, vertexAngles = null) {
+            // 기본 각도 배치: 하나는 120도, 나머지는 균등 분배
+            if (!vertexAngles) {
+                const remaining = 900 - 120; // 총 내각의 합 - 120도
+                const otherAngle = remaining / 6; // 나머지 6개로 분배
 
-            calculateVertices() {
-                const vertices = [];
-
-                // 타입에 따라 다른 각도 사용
-                // 중심 타일: 정칠각형 (각도가 동일)
-                // 주변 타일: 각도 조정 (꼭짓점에서 360도 만족)
-
-                if (this.type === 'center') {
-                    // 정칠각형
-                    for (let i = 0; i < 7; i++) {
-                        const angle = (2 * Math.PI * i / 7) + this.rotation;
-                        const x = this.x + this.size * Math.cos(angle);
-                        const y = this.y + this.size * Math.sin(angle);
-                        vertices.push({x, y});
-                    }
-                } else {
-                    // 조정된 칠각형
-                    // 한 꼭짓점의 각도를 120도로 설정 (3개가 만나서 360도)
-                    // 나머지 각도들을 조정
-
-                    const angles = this.getAdjustedAngles();
-                    let currentAngle = this.rotation;
-
-                    vertices.push({x: this.x, y: this.y}); // 시작점
-
-                    for (let i = 0; i < 7; i++) {
-                        const sideLength = this.size;
-                        currentAngle += angles[i];
-                        const x = vertices[vertices.length - 1].x + sideLength * Math.cos(currentAngle);
-                        const y = vertices[vertices.length - 1].y + sideLength * Math.sin(currentAngle);
-
-                        if (i < 6) { // 마지막 점은 시작점으로 돌아가야 함
-                            vertices.push({x, y});
-                        }
-                    }
-                }
-
-                return vertices;
-            }
-
-            getAdjustedAngles() {
-                // 꼭짓점 각도 배열 (내각)
-                // 총합 = (7-2) * 180 = 900도
-                // 한 점에 3개가 만나려면 각각 120도
-
-                const deg = Math.PI / 180;
-                return [
-                    120 * deg,  // 맞물리는 점
-                    128.57 * deg,
-                    128.57 * deg,
-                    128.57 * deg,
-                    128.57 * deg,
-                    128.57 * deg,
-                    137.15 * deg
+                vertexAngles = [
+                    120,        // 만나는 점 (3개가 만나면 360도)
+                    otherAngle,
+                    otherAngle,
+                    otherAngle,
+                    otherAngle,
+                    otherAngle,
+                    otherAngle
                 ];
             }
+
+            const vertices = [];
+            let currentAngle = rotation;
+            let currentX = cx + size;
+            let currentY = cy;
+
+            vertices.push({x: currentX, y: currentY});
+
+            // 각 꼭짓점 각도를 사용하여 다음 점 계산
+            for (let i = 0; i < 6; i++) {
+                // 외각 = 180 - 내각
+                const exteriorAngle = 180 - vertexAngles[i];
+                currentAngle += exteriorAngle * Math.PI / 180;
+
+                currentX += size * Math.cos(currentAngle);
+                currentY += size * Math.sin(currentAngle);
+
+                vertices.push({x: currentX, y: currentY});
+            }
+
+            return vertices;
         }
 
         // Edge-to-edge 타일링 생성
         function generateTiles(maxDepth) {
             tiles = [];
-            const tileMap = new Map(); // 중복 방지
+            const tileMap = new Map();
 
-            const baseSize = 80; // 중심 타일 크기
+            const baseSize = 80;
             const rotationOffset = config.rotation * Math.PI / 180;
 
-            // Layer 0: 중심 타일 (더 큰 칠각형)
+            // Layer 0: 중심 타일
             const centerTile = {
-                vertices: createCenterHeptagon(centerX, centerY, baseSize, rotationOffset),
+                vertices: createAdjustedHeptagon(centerX, centerY, baseSize, rotationOffset),
                 depth: 0,
                 color: '#FF6B6B',
                 edges: []
             };
 
-            // 중심 타일의 변 정보 저장
             for (let i = 0; i < 7; i++) {
                 centerTile.edges.push({
                     v1: centerTile.vertices[i],
@@ -411,7 +388,7 @@
 
             if (maxDepth === 1) return;
 
-            // Layer 2 이상: 기존 타일들의 빈 변에 계속 붙이기
+            // Layer 2 이상
             for (let depth = 2; depth <= maxDepth; depth++) {
                 const newTiles = expandFromEdges(tiles, tileMap, depth, baseSize);
                 tiles.push(...newTiles);
@@ -419,46 +396,15 @@
             }
         }
 
-        // 중심 칠각형 생성
-        function createCenterHeptagon(cx, cy, size, rotation) {
-            const vertices = [];
-            for (let i = 0; i < 7; i++) {
-                const angle = (2 * Math.PI * i / 7) + rotation;
-                vertices.push({
-                    x: cx + size * Math.cos(angle),
-                    y: cy + size * Math.sin(angle)
-                });
-            }
-            return vertices;
-        }
-
-        // Layer 1: 중심 타일의 변을 공유하면서 생성
+        // Layer 1 생성
         function createLayer1FromEdges(centerTile, baseSize) {
             const layer1 = [];
             const colors = ['#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7B731', '#5F27CD', '#00D2FF'];
 
             centerTile.edges.forEach((edge, edgeIdx) => {
-                // 변의 중점과 방향 계산
-                const midX = (edge.v1.x + edge.v2.x) / 2;
-                const midY = (edge.v1.y + edge.v2.y) / 2;
-
-                // 변의 방향 벡터
-                const dx = edge.v2.x - edge.v1.x;
-                const dy = edge.v2.y - edge.v1.y;
-                const edgeAngle = Math.atan2(dy, dx);
-
-                // 변에 수직인 방향으로 새 타일 배치
-                const outwardAngle = edgeAngle + Math.PI / 2;
-                const distance = baseSize * 0.9; // 타일 간격
-
-                const newCenterX = midX + distance * Math.cos(outwardAngle);
-                const newCenterY = midY + distance * Math.sin(outwardAngle);
-
-                // 새 타일 생성 (변을 공유하도록 회전)
                 const newTile = createTileFromEdge(
                     edge.v1, edge.v2,
-                    newCenterX, newCenterY,
-                    baseSize * 0.85, // Layer 1은 약간 작게
+                    baseSize * 0.85,
                     1,
                     colors[edgeIdx % colors.length]
                 );
@@ -473,35 +419,31 @@
         }
 
         // 변을 공유하는 새 타일 생성
-        function createTileFromEdge(sharedV1, sharedV2, centerX, centerY, size, depth, color) {
+        function createTileFromEdge(sharedV1, sharedV2, size, depth, color) {
             const vertices = [];
 
-            // 공유하는 변의 길이
             const edgeLength = Math.sqrt(
                 (sharedV2.x - sharedV1.x) ** 2 +
                 (sharedV2.y - sharedV1.y) ** 2
             );
 
-            // 공유하는 변의 방향
             const edgeAngle = Math.atan2(sharedV2.y - sharedV1.y, sharedV2.x - sharedV1.x);
 
-            // 칠각형의 내각 (약 128.57도)
-            const interiorAngle = (5 * Math.PI) / 7; // (7-2)*180/7 in radians
+            // 각도 조정: 특정 점 120도, 나머지 균등 분배
+            const vertexAngle1 = 120; // 공유 변 시작점
+            const remaining = 900 - vertexAngle1;
+            const otherAngle = remaining / 6;
 
-            // 첫 번째 점 (공유 변의 시작)
             vertices.push({x: sharedV1.x, y: sharedV1.y});
-
-            // 두 번째 점 (공유 변의 끝)
             vertices.push({x: sharedV2.x, y: sharedV2.y});
 
-            // 나머지 5개 점을 순차적으로 생성
-            let currentAngle = edgeAngle; // 현재 방향
+            let currentAngle = edgeAngle;
+            const angles = [vertexAngle1, otherAngle, otherAngle, otherAngle, otherAngle, otherAngle];
 
-            for (let i = 2; i < 7; i++) {
-                // 다음 변의 방향 = 현재 방향 + (180도 - 내각)
-                currentAngle += Math.PI - interiorAngle;
+            for (let i = 0; i < 5; i++) {
+                const exteriorAngle = 180 - angles[i];
+                currentAngle += exteriorAngle * Math.PI / 180;
 
-                // 이전 점에서 edgeLength만큼 떨어진 다음 점
                 const prevVertex = vertices[vertices.length - 1];
                 vertices.push({
                     x: prevVertex.x + edgeLength * Math.cos(currentAngle),
@@ -516,63 +458,45 @@
                 edges: []
             };
 
-            // 변 정보 저장
             for (let i = 0; i < 7; i++) {
                 tile.edges.push({
                     v1: vertices[i],
                     v2: vertices[(i + 1) % 7],
-                    used: (i === 0) // 첫 번째 변은 이미 사용됨
+                    used: (i === 0)
                 });
             }
 
             return tile;
         }
 
-        // 기존 타일들의 빈 변에서 확장
+        // 레이어 확장
         function expandFromEdges(existingTiles, tileMap, depth, baseSize) {
             const newTiles = [];
             const colors = ['#98D8C8', '#F7B731', '#5F27CD', '#00D2FF', '#FF6B6B', '#4ECDC4', '#45B7D1'];
 
-            // 이전 레이어들의 타일 중 빈 변이 있는 것 찾기
-            existingTiles.forEach((tile, tileIdx) => {
+            existingTiles.forEach((tile) => {
                 if (!tile.edges) return;
 
                 tile.edges.forEach((edge, edgeIdx) => {
                     if (edge.used) return;
 
-                    // 변의 중점과 방향
-                    const midX = (edge.v1.x + edge.v2.x) / 2;
-                    const midY = (edge.v1.y + edge.v2.y) / 2;
+                    const tileSize = baseSize * Math.pow(0.92, depth);
 
-                    const dx = edge.v2.x - edge.v1.x;
-                    const dy = edge.v2.y - edge.v1.y;
-                    const edgeAngle = Math.atan2(dy, dx);
-
-                    // 변에 수직 방향
-                    const outwardAngle = edgeAngle + Math.PI / 2;
-                    const tileSize = baseSize * Math.pow(0.92, depth); // 레이어마다 조금씩 작게
-                    const distance = tileSize * 0.9;
-
-                    const newCenterX = midX + distance * Math.cos(outwardAngle);
-                    const newCenterY = midY + distance * Math.sin(outwardAngle);
-
-                    // 화면 범위 체크
-                    if (Math.abs(newCenterX - centerX) > width * 0.6 ||
-                        Math.abs(newCenterY - centerY) > height * 0.6) {
-                        return;
-                    }
-
-                    // 새 타일 생성
                     const newTile = createTileFromEdge(
                         edge.v1, edge.v2,
-                        newCenterX, newCenterY,
                         tileSize,
                         depth,
                         colors[(depth + edgeIdx) % colors.length]
                     );
 
                     if (newTile) {
-                        // 중복 체크
+                        const center = getTileCenter(newTile.vertices);
+
+                        if (Math.abs(center.x - centerX) > width * 0.6 ||
+                            Math.abs(center.y - centerY) > height * 0.6) {
+                            return;
+                        }
+
                         const tileId = getTileId(newTile.vertices);
                         if (!tileMap.has(tileId)) {
                             newTiles.push(newTile);
@@ -585,14 +509,18 @@
             return newTiles;
         }
 
-        // 타일 ID 생성 (중복 방지)
-        function getTileId(vertices) {
+        function getTileCenter(vertices) {
             let cx = 0, cy = 0;
             vertices.forEach(v => {
                 cx += v.x;
                 cy += v.y;
             });
-            return `${(cx / vertices.length).toFixed(1)},${(cy / vertices.length).toFixed(1)}`;
+            return {x: cx / vertices.length, y: cy / vertices.length};
+        }
+
+        function getTileId(vertices) {
+            const center = getTileCenter(vertices);
+            return `${center.x.toFixed(1)},${center.y.toFixed(1)}`;
         }
 
         // 화면 좌표 변환
@@ -603,23 +531,20 @@
             };
         }
 
-        // 타일 색상
-        const layerColors = [
-            '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A',
-            '#98D8C8', '#F7B731', '#5F27CD', '#00D2FF'
-        ];
+        function fromScreen(screenX, screenY) {
+            return {
+                x: (screenX - config.offsetX - centerX) / config.zoom + centerX,
+                y: (screenY - config.offsetY - centerY) / config.zoom + centerY
+            };
+        }
 
         // 렌더링
         function render() {
-            // 배경
             ctx.fillStyle = '#f8f9fa';
             ctx.fillRect(0, 0, width, height);
 
-            // 타일 그리기
-            let uniqueVertices = new Set();
-
             tiles.forEach((tile) => {
-                const color = tile.color || layerColors[tile.depth % layerColors.length];
+                const color = tile.color;
 
                 // 채우기
                 if (config.showFill) {
@@ -652,14 +577,11 @@
 
                 // 꼭짓점
                 if (config.showVertices) {
-                    tile.vertices.forEach(v => {
-                        const vid = `${v.x.toFixed(1)},${v.y.toFixed(1)}`;
-                        uniqueVertices.add(vid);
-
+                    tile.vertices.forEach((v, idx) => {
                         const s = toScreen(v);
                         ctx.beginPath();
-                        ctx.arc(s.x, s.y, 4, 0, 2 * Math.PI);
-                        ctx.fillStyle = '#2c3e50';
+                        ctx.arc(s.x, s.y, config.editMode ? 6 : 4, 0, 2 * Math.PI);
+                        ctx.fillStyle = config.editMode ? '#ff6b6b' : '#2c3e50';
                         ctx.fill();
                         ctx.strokeStyle = '#ffffff';
                         ctx.lineWidth = 2;
@@ -671,7 +593,24 @@
             // 통계 업데이트
             document.getElementById('tile-count').textContent = tiles.length;
             document.getElementById('current-layer').textContent = config.depth;
-            document.getElementById('vertex-count').textContent = uniqueVertices.size;
+            document.getElementById('edit-status').textContent = config.editMode ? 'ON' : 'OFF';
+        }
+
+        // 꼭짓점 찾기
+        function findVertexAt(screenX, screenY) {
+            const threshold = 10;
+
+            for (let tile of tiles) {
+                for (let i = 0; i < tile.vertices.length; i++) {
+                    const s = toScreen(tile.vertices[i]);
+                    const dist = Math.sqrt((s.x - screenX) ** 2 + (s.y - screenY) ** 2);
+
+                    if (dist < threshold) {
+                        return {tile, vertexIndex: i};
+                    }
+                }
+            }
+            return null;
         }
 
         // 초기화
@@ -680,7 +619,7 @@
             render();
         }
 
-        // 컨트롤 이벤트
+        // 이벤트 리스너
         document.getElementById('depth').addEventListener('input', (e) => {
             config.depth = parseInt(e.target.value);
             document.getElementById('depth-value').textContent = config.depth;
@@ -719,6 +658,13 @@
             render();
         });
 
+        document.getElementById('toggle-edit-mode').addEventListener('click', (e) => {
+            config.editMode = !config.editMode;
+            e.target.classList.toggle('active');
+            canvas.style.cursor = config.editMode ? 'crosshair' : 'move';
+            render();
+        });
+
         document.getElementById('reset').addEventListener('click', () => {
             config = {
                 depth: 2,
@@ -726,7 +672,8 @@
                 rotation: 0,
                 showFill: true,
                 showEdges: true,
-                showVertices: false,
+                showVertices: true,
+                editMode: false,
                 offsetX: 0,
                 offsetY: 0
             };
@@ -740,7 +687,10 @@
 
             document.getElementById('toggle-fill').classList.add('active');
             document.getElementById('toggle-edges').classList.add('active');
-            document.getElementById('toggle-vertices').classList.remove('active');
+            document.getElementById('toggle-vertices').classList.add('active');
+            document.getElementById('toggle-edit-mode').classList.remove('active');
+
+            canvas.style.cursor = 'move';
 
             generateTiles(config.depth);
             render();
@@ -748,21 +698,45 @@
 
         document.getElementById('export').addEventListener('click', () => {
             const link = document.createElement('a');
-            link.download = 'heptagon-tiling-euclidean.png';
+            link.download = 'heptagon-tiling-adjusted.png';
             link.href = canvas.toDataURL();
             link.click();
         });
 
-        // 마우스 드래그
+        // 마우스 이벤트
         canvas.addEventListener('mousedown', (e) => {
-            isDragging = true;
-            lastX = e.clientX;
-            lastY = e.clientY;
-            canvas.style.cursor = 'grabbing';
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            if (config.editMode) {
+                // 편집 모드: 꼭짓점 드래그
+                draggedVertex = findVertexAt(mouseX, mouseY);
+                if (draggedVertex) {
+                    canvas.classList.add('dragging-vertex');
+                }
+            } else {
+                // 일반 모드: 캔버스 드래그
+                isDragging = true;
+                lastX = e.clientX;
+                lastY = e.clientY;
+                canvas.style.cursor = 'grabbing';
+            }
         });
 
         canvas.addEventListener('mousemove', (e) => {
-            if (isDragging) {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            if (draggedVertex) {
+                // 꼭짓점 이동
+                const worldPos = fromScreen(mouseX, mouseY);
+                draggedVertex.tile.vertices[draggedVertex.vertexIndex].x = worldPos.x;
+                draggedVertex.tile.vertices[draggedVertex.vertexIndex].y = worldPos.y;
+                render();
+            } else if (isDragging) {
+                // 캔버스 이동
                 config.offsetX += e.clientX - lastX;
                 config.offsetY += e.clientY - lastY;
                 lastX = e.clientX;
@@ -773,32 +747,16 @@
 
         canvas.addEventListener('mouseup', () => {
             isDragging = false;
-            canvas.style.cursor = 'move';
+            draggedVertex = null;
+            canvas.style.cursor = config.editMode ? 'crosshair' : 'move';
+            canvas.classList.remove('dragging-vertex');
         });
 
         canvas.addEventListener('mouseleave', () => {
             isDragging = false;
-            canvas.style.cursor = 'move';
-        });
-
-        // 터치 지원
-        let lastTouchX = 0, lastTouchY = 0;
-
-        canvas.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            const touch = e.touches[0];
-            lastTouchX = touch.clientX;
-            lastTouchY = touch.clientY;
-        });
-
-        canvas.addEventListener('touchmove', (e) => {
-            e.preventDefault();
-            const touch = e.touches[0];
-            config.offsetX += touch.clientX - lastTouchX;
-            config.offsetY += touch.clientY - lastTouchY;
-            lastTouchX = touch.clientX;
-            lastTouchY = touch.clientY;
-            render();
+            draggedVertex = null;
+            canvas.style.cursor = config.editMode ? 'crosshair' : 'move';
+            canvas.classList.remove('dragging-vertex');
         });
 
         // 시작
