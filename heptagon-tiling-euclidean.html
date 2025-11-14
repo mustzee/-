@@ -374,36 +374,52 @@
             }
         }
 
-        // 더 단순한 접근: 중심 + 방사형 패턴
+        // Edge-to-edge 타일링 생성
         function generateTiles(maxDepth) {
             tiles = [];
+            const tileMap = new Map(); // 중복 방지
 
-            const baseSize = 60; // 기본 타일 크기
+            const baseSize = 80; // 중심 타일 크기
             const rotationOffset = config.rotation * Math.PI / 180;
 
-            // Layer 0: 중심 타일
-            tiles.push({
+            // Layer 0: 중심 타일 (더 큰 칠각형)
+            const centerTile = {
                 vertices: createCenterHeptagon(centerX, centerY, baseSize, rotationOffset),
                 depth: 0,
-                color: '#FF6B6B'
-            });
+                color: '#FF6B6B',
+                edges: []
+            };
+
+            // 중심 타일의 변 정보 저장
+            for (let i = 0; i < 7; i++) {
+                centerTile.edges.push({
+                    v1: centerTile.vertices[i],
+                    v2: centerTile.vertices[(i + 1) % 7],
+                    used: false
+                });
+            }
+
+            tiles.push(centerTile);
+            tileMap.set(getTileId(centerTile.vertices), centerTile);
 
             if (maxDepth === 0) return;
 
-            // Layer 1: 중심 타일 주변에 7개
-            const layer1Tiles = createLayer1(centerX, centerY, baseSize, rotationOffset);
+            // Layer 1: 중심 타일의 각 변에 붙이기
+            const layer1Tiles = createLayer1FromEdges(centerTile, baseSize);
             tiles.push(...layer1Tiles);
+            layer1Tiles.forEach(t => tileMap.set(getTileId(t.vertices), t));
 
             if (maxDepth === 1) return;
 
-            // Layer 2 이상: 확장
+            // Layer 2 이상: 기존 타일들의 빈 변에 계속 붙이기
             for (let depth = 2; depth <= maxDepth; depth++) {
-                const newTiles = expandLayer(tiles, depth, baseSize);
+                const newTiles = expandFromEdges(tiles, tileMap, depth, baseSize);
                 tiles.push(...newTiles);
+                newTiles.forEach(t => tileMap.set(getTileId(t.vertices), t));
             }
         }
 
-        // 중심 칠각형 생성 (정칠각형)
+        // 중심 칠각형 생성
         function createCenterHeptagon(cx, cy, size, rotation) {
             const vertices = [];
             for (let i = 0; i < 7; i++) {
@@ -416,112 +432,150 @@
             return vertices;
         }
 
-        // Layer 1 생성
-        function createLayer1(cx, cy, size, rotation) {
+        // Layer 1: 중심 타일의 변을 공유하면서 생성
+        function createLayer1FromEdges(centerTile, baseSize) {
             const layer1 = [];
             const colors = ['#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7B731', '#5F27CD', '#00D2FF'];
 
-            for (let i = 0; i < 7; i++) {
-                const angle = (2 * Math.PI * i / 7) + rotation;
+            centerTile.edges.forEach((edge, edgeIdx) => {
+                // 변의 중점과 방향 계산
+                const midX = (edge.v1.x + edge.v2.x) / 2;
+                const midY = (edge.v1.y + edge.v2.y) / 2;
 
-                // 중심에서 거리 계산
-                const distance = size * 1.8; // 타일이 맞물리도록 조정
+                // 변의 방향 벡터
+                const dx = edge.v2.x - edge.v1.x;
+                const dy = edge.v2.y - edge.v1.y;
+                const edgeAngle = Math.atan2(dy, dx);
 
-                const tileX = cx + distance * Math.cos(angle);
-                const tileY = cy + distance * Math.sin(angle);
+                // 변에 수직인 방향으로 새 타일 배치
+                const outwardAngle = edgeAngle + Math.PI / 2;
+                const distance = baseSize * 0.9; // 타일 간격
 
-                // 각 타일의 회전
-                const tileRotation = angle + Math.PI;
+                const newCenterX = midX + distance * Math.cos(outwardAngle);
+                const newCenterY = midY + distance * Math.sin(outwardAngle);
 
-                layer1.push({
-                    vertices: createAdjustedHeptagon(tileX, tileY, size, tileRotation, i),
-                    depth: 1,
-                    color: colors[i % colors.length]
-                });
-            }
+                // 새 타일 생성 (변을 공유하도록 회전)
+                const newTile = createTileFromEdge(
+                    edge.v1, edge.v2,
+                    newCenterX, newCenterY,
+                    baseSize * 0.85, // Layer 1은 약간 작게
+                    1,
+                    colors[edgeIdx % colors.length]
+                );
+
+                if (newTile) {
+                    layer1.push(newTile);
+                    edge.used = true;
+                }
+            });
 
             return layer1;
         }
 
-        // 조정된 칠각형 생성 (각도가 360도를 만족하도록)
-        function createAdjustedHeptagon(cx, cy, size, rotation, index) {
+        // 변을 공유하는 새 타일 생성
+        function createTileFromEdge(sharedV1, sharedV2, centerX, centerY, size, depth, color) {
             const vertices = [];
 
-            // 간단한 방법: 정칠각형을 약간 변형
-            // 실제로는 복잡한 계산이 필요하지만, 시각적으로 유사하게 만듦
-            for (let i = 0; i < 7; i++) {
-                // 각 꼭짓점의 각도를 약간 조정
-                let angle = (2 * Math.PI * i / 7) + rotation;
+            // 공유하는 변의 두 점을 포함
+            vertices.push({x: sharedV1.x, y: sharedV1.y});
+            vertices.push({x: sharedV2.x, y: sharedV2.y});
 
-                // 특정 꼭짓점에서 120도가 되도록 조정
-                let radiusAdjust = 1.0;
-                if (i === 0 || i === 1 || i === 6) {
-                    radiusAdjust = 0.95; // 맞물리는 부분 조정
-                }
+            // 나머지 5개 점 생성
+            const edgeAngle = Math.atan2(sharedV2.y - sharedV1.y, sharedV2.x - sharedV1.x);
+            const startAngle = edgeAngle + Math.PI / 7; // 칠각형 각도 조정
 
+            for (let i = 2; i < 7; i++) {
+                const angle = startAngle + (2 * Math.PI * (i - 1) / 7);
                 vertices.push({
-                    x: cx + size * radiusAdjust * Math.cos(angle),
-                    y: cy + size * radiusAdjust * Math.sin(angle)
+                    x: centerX + size * Math.cos(angle),
+                    y: centerY + size * Math.sin(angle)
                 });
             }
 
-            return vertices;
+            const tile = {
+                vertices: vertices,
+                depth: depth,
+                color: color,
+                edges: []
+            };
+
+            // 변 정보 저장
+            for (let i = 0; i < 7; i++) {
+                tile.edges.push({
+                    v1: vertices[i],
+                    v2: vertices[(i + 1) % 7],
+                    used: (i === 0) // 첫 번째 변은 이미 사용됨
+                });
+            }
+
+            return tile;
         }
 
-        // 레이어 확장
-        function expandLayer(existingTiles, depth, baseSize) {
+        // 기존 타일들의 빈 변에서 확장
+        function expandFromEdges(existingTiles, tileMap, depth, baseSize) {
             const newTiles = [];
             const colors = ['#98D8C8', '#F7B731', '#5F27CD', '#00D2FF', '#FF6B6B', '#4ECDC4', '#45B7D1'];
 
-            // 이전 레이어의 타일들 기준으로 확장
-            const prevLayerTiles = existingTiles.filter(t => t.depth === depth - 1);
+            // 이전 레이어들의 타일 중 빈 변이 있는 것 찾기
+            existingTiles.forEach((tile, tileIdx) => {
+                if (!tile.edges) return;
 
-            prevLayerTiles.forEach((tile, idx) => {
-                // 각 타일의 중심 계산
-                const center = getTileCenter(tile.vertices);
+                tile.edges.forEach((edge, edgeIdx) => {
+                    if (edge.used) return;
 
-                // 타일 주변에 새로운 타일 추가
-                for (let i = 0; i < 7; i++) {
-                    const angle = (2 * Math.PI * i / 7) + (idx * Math.PI / 3.5);
-                    const distance = baseSize * 1.8;
+                    // 변의 중점과 방향
+                    const midX = (edge.v1.x + edge.v2.x) / 2;
+                    const midY = (edge.v1.y + edge.v2.y) / 2;
 
-                    const newX = center.x + distance * Math.cos(angle);
-                    const newY = center.y + distance * Math.sin(angle);
+                    const dx = edge.v2.x - edge.v1.x;
+                    const dy = edge.v2.y - edge.v1.y;
+                    const edgeAngle = Math.atan2(dy, dx);
 
-                    // 이미 존재하는 타일과 너무 가까우면 스킵
-                    if (isTooClose(newX, newY, existingTiles.concat(newTiles))) {
-                        continue;
+                    // 변에 수직 방향
+                    const outwardAngle = edgeAngle + Math.PI / 2;
+                    const tileSize = baseSize * Math.pow(0.92, depth); // 레이어마다 조금씩 작게
+                    const distance = tileSize * 0.9;
+
+                    const newCenterX = midX + distance * Math.cos(outwardAngle);
+                    const newCenterY = midY + distance * Math.sin(outwardAngle);
+
+                    // 화면 범위 체크
+                    if (Math.abs(newCenterX - centerX) > width * 0.6 ||
+                        Math.abs(newCenterY - centerY) > height * 0.6) {
+                        return;
                     }
 
-                    newTiles.push({
-                        vertices: createAdjustedHeptagon(newX, newY, baseSize, angle, i),
-                        depth: depth,
-                        color: colors[(depth + i) % colors.length]
-                    });
-                }
+                    // 새 타일 생성
+                    const newTile = createTileFromEdge(
+                        edge.v1, edge.v2,
+                        newCenterX, newCenterY,
+                        tileSize,
+                        depth,
+                        colors[(depth + edgeIdx) % colors.length]
+                    );
+
+                    if (newTile) {
+                        // 중복 체크
+                        const tileId = getTileId(newTile.vertices);
+                        if (!tileMap.has(tileId)) {
+                            newTiles.push(newTile);
+                            edge.used = true;
+                        }
+                    }
+                });
             });
 
             return newTiles;
         }
 
-        // 타일 중심 계산
-        function getTileCenter(vertices) {
+        // 타일 ID 생성 (중복 방지)
+        function getTileId(vertices) {
             let cx = 0, cy = 0;
             vertices.forEach(v => {
                 cx += v.x;
                 cy += v.y;
             });
-            return {x: cx / vertices.length, y: cy / vertices.length};
-        }
-
-        // 타일이 너무 가까운지 확인
-        function isTooClose(x, y, existingTiles, threshold = 40) {
-            for (let tile of existingTiles) {
-                const center = getTileCenter(tile.vertices);
-                const dist = Math.sqrt((x - center.x) ** 2 + (y - center.y) ** 2);
-                if (dist < threshold) return true;
-            }
-            return false;
+            return `${(cx / vertices.length).toFixed(1)},${(cy / vertices.length).toFixed(1)}`;
         }
 
         // 화면 좌표 변환
