@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>칠각형 타일링 - 분산 Map-Reduce</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            color: white;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            max-width: 1000px;
+            width: 100%;
+        }
+
+        .canvas-wrapper {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        canvas {
+            display: block;
+            border-radius: 10px;
+            cursor: move;
+            max-width: 100%;
+            height: auto;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .control-item {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 15px;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .control-label {
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .control-content {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            height: 8px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.3);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: white;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .value-display {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 5px 12px;
+            border-radius: 5px;
+            font-weight: 600;
+            min-width: 50px;
+            text-align: center;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: translateY(-2px);
+        }
+
+        button.active {
+            background: white;
+            color: #667eea;
+        }
+
+        .info-panel {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 15px;
+            border-radius: 10px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            text-align: center;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .info-label {
+            font-size: 0.85rem;
+            opacity: 0.8;
+        }
+
+        .info-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .progress-bar {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .progress-label {
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .progress-track {
+            background: rgba(255, 255, 255, 0.2);
+            height: 10px;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4ECDC4, #00d4ff);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .instructions {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        .instructions strong {
+            color: #ffd700;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔷 칠각형 타일링 - Map-Reduce</h1>
+        <div class="subtitle">분산 병렬 처리로 대규모 타일 생성</div>
+    </div>
+
+    <div class="container">
+        <div class="canvas-wrapper">
+            <canvas id="canvas" width="800" height="800"></canvas>
+        </div>
+
+        <div class="progress-bar">
+            <div class="progress-label">생성 진행률: <span id="progress-text">0%</span></div>
+            <div class="progress-track">
+                <div class="progress-fill" id="progress-fill"></div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="control-item">
+                <div class="control-label">레이어 깊이</div>
+                <div class="control-content">
+                    <input type="range" id="depth" min="0" max="6" value="3" step="1">
+                    <div class="value-display" id="depth-value">3</div>
+                </div>
+            </div>
+
+            <div class="control-item">
+                <div class="control-label">워커 수 (병렬도)</div>
+                <div class="control-content">
+                    <input type="range" id="workers" min="1" max="8" value="4" step="1">
+                    <div class="value-display" id="workers-value">4</div>
+                </div>
+            </div>
+
+            <div class="control-item">
+                <div class="control-label">줌 레벨</div>
+                <div class="control-content">
+                    <input type="range" id="zoom" min="0.3" max="3.0" value="0.8" step="0.1">
+                    <div class="value-display" id="zoom-value">0.8</div>
+                </div>
+            </div>
+
+            <div class="control-item">
+                <div class="control-label">표시 옵션</div>
+                <div class="button-group">
+                    <button id="toggle-fill" class="active">채우기</button>
+                    <button id="toggle-edges" class="active">경계선</button>
+                    <button id="toggle-vertices" class="active">꼭짓점</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="button-group" style="justify-content: center; margin-bottom: 20px;">
+            <button id="generate">🚀 생성 시작</button>
+            <button id="reset">🔄 초기화</button>
+            <button id="export">💾 이미지 저장</button>
+        </div>
+
+        <div class="info-panel">
+            <div class="info-item">
+                <div class="info-label">총 타일 수</div>
+                <div class="info-value" id="tile-count">0</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">생성 시간</div>
+                <div class="info-value" id="gen-time">0ms</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">활성 워커</div>
+                <div class="info-value" id="active-workers">0</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">처리된 작업</div>
+                <div class="info-value" id="tasks-completed">0</div>
+            </div>
+        </div>
+
+        <div class="instructions">
+            <strong>Map-Reduce 분산 처리:</strong><br>
+            • <strong>Map:</strong> 각 레이어의 타일을 병렬로 생성 (여러 워커가 동시 작업)<br>
+            • <strong>Reduce:</strong> 생성된 타일들을 합치고 중복 제거<br>
+            • 워커 수를 조절하여 병렬 처리 성능 조정<br>
+            • 대규모 타일링도 빠르게 생성 가능
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // 설정
+        let config = {
+            depth: 3,
+            numWorkers: 4,
+            zoom: 0.8,
+            showFill: true,
+            showEdges: true,
+            showVertices: true,
+            offsetX: 0,
+            offsetY: 0
+        };
+
+        let tiles = [];
+        let isDragging = false;
+        let lastX = 0, lastY = 0;
+        let isGenerating = false;
+
+        const width = canvas.width;
+        const height = canvas.height;
+        const centerX = width / 2;
+        const centerY = height / 2;
+
+        // Map-Reduce 시스템
+        class MapReduceSystem {
+            constructor(numWorkers) {
+                this.workers = [];
+                this.taskQueue = [];
+                this.results = [];
+                this.completedTasks = 0;
+                this.totalTasks = 0;
+                this.onProgress = null;
+                this.onComplete = null;
+            }
+
+            // Map 단계: 작업을 분산
+            map(tasks) {
+                this.taskQueue = [...tasks];
+                this.totalTasks = tasks.length;
+                this.completedTasks = 0;
+                this.results = [];
+
+                // 시뮬레이션: 실제 Web Worker 대신 Promise로 구현
+                return Promise.all(
+                    tasks.map((task, index) => this.processTask(task, index))
+                );
+            }
+
+            // 각 작업 처리 (워커 시뮬레이션)
+            async processTask(task, workerIndex) {
+                // 비동기 처리 시뮬레이션
+                await new Promise(resolve => setTimeout(resolve, 10));
+
+                const result = this.executeTask(task);
+
+                this.completedTasks++;
+                if (this.onProgress) {
+                    this.onProgress(this.completedTasks, this.totalTasks);
+                }
+
+                return result;
+            }
+
+            // 실제 타일 생성 로직
+            executeTask(task) {
+                const { layerIndex, startIndex, endIndex, baseSize, centerX, centerY, rotation } = task;
+
+                const tiles = [];
+
+                if (layerIndex === 0) {
+                    // Layer 0: 중심 타일
+                    tiles.push({
+                        vertices: this.createAdjustedHeptagon(centerX, centerY, baseSize, rotation, 0),
+                        depth: 0,
+                        color: '#FF6B6B'
+                    });
+                } else if (layerIndex === 1) {
+                    // Layer 1: 각 워커가 일부 타일 생성
+                    const colors = ['#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7B731', '#5F27CD', '#00D2FF'];
+
+                    for (let i = startIndex; i < endIndex; i++) {
+                        const angle = (2 * Math.PI * i / 7) + rotation;
+                        const distance = baseSize * 1.8;
+
+                        const tileX = centerX + distance * Math.cos(angle);
+                        const tileY = centerY + distance * Math.sin(angle);
+                        const tileRotation = angle + Math.PI;
+
+                        tiles.push({
+                            vertices: this.createAdjustedHeptagon(tileX, tileY, baseSize, tileRotation, i),
+                            depth: 1,
+                            color: colors[i % colors.length]
+                        });
+                    }
+                }
+
+                return tiles;
+            }
+
+            // 각도 조정된 칠각형 생성
+            createAdjustedHeptagon(cx, cy, size, rotation, index) {
+                const vertices = [];
+                const remaining = 900 - 120;
+                const otherAngle = remaining / 6;
+
+                const vertexAngles = [120, otherAngle, otherAngle, otherAngle, otherAngle, otherAngle, otherAngle];
+
+                let currentAngle = rotation;
+                let currentX = cx + size;
+                let currentY = cy;
+
+                vertices.push({x: currentX, y: currentY});
+
+                for (let i = 0; i < 6; i++) {
+                    const exteriorAngle = 180 - vertexAngles[i];
+                    currentAngle += exteriorAngle * Math.PI / 180;
+
+                    currentX += size * Math.cos(currentAngle);
+                    currentY += size * Math.sin(currentAngle);
+
+                    vertices.push({x: currentX, y: currentY});
+                }
+
+                return vertices;
+            }
+
+            // Reduce 단계: 결과 합치기
+            reduce(mappedResults) {
+                const allTiles = [];
+                const tileMap = new Map();
+
+                // 모든 결과를 합치기
+                for (const result of mappedResults) {
+                    for (const tiles of result) {
+                        for (const tile of tiles) {
+                            const tileId = this.getTileId(tile.vertices);
+
+                            // 중복 제거
+                            if (!tileMap.has(tileId)) {
+                                tileMap.set(tileId, tile);
+                                allTiles.push(tile);
+                            }
+                        }
+                    }
+                }
+
+                return allTiles;
+            }
+
+            getTileId(vertices) {
+                let cx = 0, cy = 0;
+                vertices.forEach(v => {
+                    cx += v.x;
+                    cy += v.y;
+                });
+                return `${(cx / vertices.length).toFixed(1)},${(cy / vertices.length).toFixed(1)}`;
+            }
+        }
+
+        // 타일 생성 (Map-Reduce 방식)
+        async function generateTilesMapReduce(maxDepth, numWorkers) {
+            isGenerating = true;
+            const startTime = performance.now();
+
+            document.getElementById('active-workers').textContent = numWorkers;
+
+            const system = new MapReduceSystem(numWorkers);
+            const baseSize = 60;
+            const rotation = 0;
+
+            // 진행률 업데이트
+            system.onProgress = (completed, total) => {
+                const progress = (completed / total) * 100;
+                document.getElementById('progress-fill').style.width = progress + '%';
+                document.getElementById('progress-text').textContent = Math.round(progress) + '%';
+                document.getElementById('tasks-completed').textContent = completed;
+            };
+
+            const allTiles = [];
+
+            // Layer 0 생성 (단일 작업)
+            const layer0Tasks = [{
+                layerIndex: 0,
+                startIndex: 0,
+                endIndex: 1,
+                baseSize,
+                centerX,
+                centerY,
+                rotation
+            }];
+
+            const layer0Results = await system.map(layer0Tasks);
+            const layer0Tiles = system.reduce(layer0Results);
+            allTiles.push(...layer0Tiles);
+
+            if (maxDepth === 0) {
+                tiles = allTiles;
+                const endTime = performance.now();
+                document.getElementById('gen-time').textContent = Math.round(endTime - startTime) + 'ms';
+                document.getElementById('active-workers').textContent = '0';
+                isGenerating = false;
+                render();
+                return;
+            }
+
+            // Layer 1 생성 (7개 타일을 워커 수만큼 분할)
+            const layer1Tasks = [];
+            const tilesPerWorker = Math.ceil(7 / numWorkers);
+
+            for (let w = 0; w < numWorkers; w++) {
+                const start = w * tilesPerWorker;
+                const end = Math.min(start + tilesPerWorker, 7);
+
+                if (start < end) {
+                    layer1Tasks.push({
+                        layerIndex: 1,
+                        startIndex: start,
+                        endIndex: end,
+                        baseSize,
+                        centerX,
+                        centerY,
+                        rotation
+                    });
+                }
+            }
+
+            const layer1Results = await system.map(layer1Tasks);
+            const layer1Tiles = system.reduce(layer1Results);
+            allTiles.push(...layer1Tiles);
+
+            // Layer 2+ 생성 (간단한 확장)
+            for (let depth = 2; depth <= maxDepth; depth++) {
+                const prevLayer = allTiles.filter(t => t.depth === depth - 1);
+                const colors = ['#98D8C8', '#F7B731', '#5F27CD', '#00D2FF', '#FF6B6B', '#4ECDC4', '#45B7D1'];
+
+                prevLayer.forEach((tile, idx) => {
+                    const center = getTileCenter(tile.vertices);
+
+                    for (let i = 0; i < 7; i++) {
+                        const angle = (2 * Math.PI * i / 7) + (idx * Math.PI / 3.5);
+                        const distance = baseSize * 1.8;
+
+                        const newX = center.x + distance * Math.cos(angle);
+                        const newY = center.y + distance * Math.sin(angle);
+
+                        if (!isTooClose(newX, newY, allTiles, 40)) {
+                            allTiles.push({
+                                vertices: system.createAdjustedHeptagon(newX, newY, baseSize, angle, i),
+                                depth: depth,
+                                color: colors[(depth + i) % colors.length]
+                            });
+                        }
+                    }
+                });
+            }
+
+            tiles = allTiles;
+
+            const endTime = performance.now();
+            document.getElementById('gen-time').textContent = Math.round(endTime - startTime) + 'ms';
+            document.getElementById('active-workers').textContent = '0';
+            document.getElementById('progress-fill').style.width = '100%';
+            document.getElementById('progress-text').textContent = '100%';
+            isGenerating = false;
+
+            render();
+        }
+
+        function getTileCenter(vertices) {
+            let cx = 0, cy = 0;
+            vertices.forEach(v => {
+                cx += v.x;
+                cy += v.y;
+            });
+            return {x: cx / vertices.length, y: cy / vertices.length};
+        }
+
+        function isTooClose(x, y, existingTiles, threshold) {
+            for (let tile of existingTiles) {
+                const center = getTileCenter(tile.vertices);
+                const dist = Math.sqrt((x - center.x) ** 2 + (y - center.y) ** 2);
+                if (dist < threshold) return true;
+            }
+            return false;
+        }
+
+        // 화면 좌표 변환
+        function toScreen(point) {
+            return {
+                x: (point.x - centerX) * config.zoom + centerX + config.offsetX,
+                y: (point.y - centerY) * config.zoom + centerY + config.offsetY
+            };
+        }
+
+        const layerColors = [
+            '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A',
+            '#98D8C8', '#F7B731', '#5F27CD', '#00D2FF'
+        ];
+
+        // 렌더링
+        function render() {
+            ctx.fillStyle = '#f8f9fa';
+            ctx.fillRect(0, 0, width, height);
+
+            tiles.forEach((tile) => {
+                const color = tile.color || layerColors[tile.depth % layerColors.length];
+
+                if (config.showFill) {
+                    ctx.beginPath();
+                    const s0 = toScreen(tile.vertices[0]);
+                    ctx.moveTo(s0.x, s0.y);
+                    for (let i = 1; i < tile.vertices.length; i++) {
+                        const s = toScreen(tile.vertices[i]);
+                        ctx.lineTo(s.x, s.y);
+                    }
+                    ctx.closePath();
+                    ctx.fillStyle = color + '60';
+                    ctx.fill();
+                }
+
+                if (config.showEdges) {
+                    ctx.beginPath();
+                    const s0 = toScreen(tile.vertices[0]);
+                    ctx.moveTo(s0.x, s0.y);
+                    for (let i = 1; i < tile.vertices.length; i++) {
+                        const s = toScreen(tile.vertices[i]);
+                        ctx.lineTo(s.x, s.y);
+                    }
+                    ctx.closePath();
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+
+                if (config.showVertices) {
+                    tile.vertices.forEach(v => {
+                        const s = toScreen(v);
+                        ctx.beginPath();
+                        ctx.arc(s.x, s.y, 3, 0, 2 * Math.PI);
+                        ctx.fillStyle = '#2c3e50';
+                        ctx.fill();
+                    });
+                }
+            });
+
+            document.getElementById('tile-count').textContent = tiles.length;
+        }
+
+        // 이벤트 리스너
+        document.getElementById('depth').addEventListener('input', (e) => {
+            config.depth = parseInt(e.target.value);
+            document.getElementById('depth-value').textContent = config.depth;
+        });
+
+        document.getElementById('workers').addEventListener('input', (e) => {
+            config.numWorkers = parseInt(e.target.value);
+            document.getElementById('workers-value').textContent = config.numWorkers;
+        });
+
+        document.getElementById('zoom').addEventListener('input', (e) => {
+            config.zoom = parseFloat(e.target.value);
+            document.getElementById('zoom-value').textContent = config.zoom.toFixed(1);
+            render();
+        });
+
+        document.getElementById('toggle-fill').addEventListener('click', (e) => {
+            config.showFill = !config.showFill;
+            e.target.classList.toggle('active');
+            render();
+        });
+
+        document.getElementById('toggle-edges').addEventListener('click', (e) => {
+            config.showEdges = !config.showEdges;
+            e.target.classList.toggle('active');
+            render();
+        });
+
+        document.getElementById('toggle-vertices').addEventListener('click', (e) => {
+            config.showVertices = !config.showVertices;
+            e.target.classList.toggle('active');
+            render();
+        });
+
+        document.getElementById('generate').addEventListener('click', () => {
+            if (!isGenerating) {
+                generateTilesMapReduce(config.depth, config.numWorkers);
+            }
+        });
+
+        document.getElementById('reset').addEventListener('click', () => {
+            tiles = [];
+            config.offsetX = 0;
+            config.offsetY = 0;
+            document.getElementById('progress-fill').style.width = '0%';
+            document.getElementById('progress-text').textContent = '0%';
+            document.getElementById('tasks-completed').textContent = '0';
+            render();
+        });
+
+        document.getElementById('export').addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = 'heptagon-tiling-mapreduce.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        });
+
+        // 마우스 드래그
+        canvas.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            lastX = e.clientX;
+            lastY = e.clientY;
+            canvas.style.cursor = 'grabbing';
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                config.offsetX += e.clientX - lastX;
+                config.offsetY += e.clientY - lastY;
+                lastX = e.clientX;
+                lastY = e.clientY;
+                render();
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            isDragging = false;
+            canvas.style.cursor = 'move';
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            isDragging = false;
+            canvas.style.cursor = 'move';
+        });
+
+        // 초기 생성
+        generateTilesMapReduce(config.depth, config.numWorkers);
+    </script>
+</body>
+</html>
