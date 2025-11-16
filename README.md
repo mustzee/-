@@ -1,10 +1,40 @@
-# Order-3 Heptagonal Tiling - Poincaré Disk Visualization
+# 수학 & AI 시각화 프로젝트 모음
+
+**초보자도 이해할 수 있는 교육용 프로젝트**
+
+---
+
+## 📚 프로젝트 목록
+
+### 🤖 일상생활 AI 도우미 (NEW!)
+**초보자를 위한 규칙 기반 AI 에이전트**
+
+논리적인 의사결정을 돕는 대화형 AI 도우미입니다.
+
+**주요 기능:**
+- 📊 할 일 우선순위 분석 (아이젠하워 매트릭스)
+- 🤔 의사결정 도우미 (5단계 프로세스)
+- ⏰ 시간 관리 조언 (포모도로, 80/20 법칙)
+- 💪 건강 습관 추천 (수면, 운동, 식습관)
+
+**빠른 시작:**
+```bash
+# HTML 버전 (브라우저에서 바로 실행)
+open ai-agent.html
+
+# Python 버전 (터미널)
+python ai_agent.py
+```
+
+📖 **상세 문서:** [README_AI_AGENT.md](README_AI_AGENT.md)
+
+---
+
+### 🔷 Order-3 Heptagonal Tiling - Poincaré Disk Visualization
 
 수학적으로 정확한 쌍곡 기하학 시각화: **{7,3} 타일링**
 
 **다양한 플랫폼 구현: HTML/JS, React, Python, Java**
-
-## 개요
 
 이 프로젝트는 Poincaré disk 모델을 사용하여 Order-3 heptagonal tiling을 시각화합니다. 이는 각 꼭짓점에 3개의 정칠각형이 만나는 쌍곡 평면의 정규 타일링입니다.
 
