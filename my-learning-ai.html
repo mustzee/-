@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>나만의 학습하는 AI - 오프라인 & 무료</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: white;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .subtitle {
+            text-align: center;
+            color: rgba(255,255,255,0.9);
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .card.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .badge {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.7em;
+            font-weight: bold;
+        }
+
+        .badge.learning {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: bold;
+        }
+
+        input[type="number"],
+        input[type="date"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button.secondary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .stat-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-box h3 {
+            font-size: 2.5em;
+            margin-bottom: 5px;
+        }
+
+        .stat-box p {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .prediction {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 15px;
+            text-align: center;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        .confidence {
+            font-size: 0.8em;
+            margin-top: 10px;
+            opacity: 0.9;
+        }
+
+        .training-data {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+
+        .data-entry {
+            background: #f5f5f5;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            position: relative;
+        }
+
+        .data-entry small {
+            color: #666;
+            display: block;
+            margin-top: 5px;
+        }
+
+        .delete-btn {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            background: #f5576c;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            width: auto;
+            margin: 0;
+        }
+
+        .info-box {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+
+        .info-box strong {
+            color: #2196F3;
+        }
+
+        .accuracy-bar {
+            background: #e0e0e0;
+            height: 30px;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-top: 10px;
+            position: relative;
+        }
+
+        .accuracy-fill {
+            background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+            height: 100%;
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .tips {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+
+        canvas {
+            width: 100%;
+            height: 300px;
+            border-radius: 10px;
+            background: white;
+        }
+
+        @media (max-width: 768px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .loading {
+            display: inline-block;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧠 나만의 학습하는 AI</h1>
+        <p class="subtitle">
+            100% 무료 · 완전 오프라인 · 당신의 데이터로 학습
+        </p>
+
+        <div class="main-grid">
+            <!-- 데이터 입력 -->
+            <div class="card">
+                <h2>
+                    📝 데이터 입력
+                    <span class="badge">학습 재료</span>
+                </h2>
+
+                <div class="info-box">
+                    <strong>💡 작동 원리:</strong> 당신이 데이터를 입력하면 AI가 패턴을 학습합니다.
+                    최소 5개 이상 입력하면 예측을 시작합니다!
+                </div>
+
+                <form id="dataForm">
+                    <div class="input-group">
+                        <label>📅 날짜</label>
+                        <input type="date" id="date" required>
+                    </div>
+
+                    <div class="input-group">
+                        <label>😊 기분 (1-10)</label>
+                        <input type="number" id="mood" min="1" max="10" required>
+                    </div>
+
+                    <div class="input-group">
+                        <label>😴 수면 시간 (시간)</label>
+                        <input type="number" id="sleep" min="0" max="24" step="0.5" required>
+                    </div>
+
+                    <div class="input-group">
+                        <label>🌤️ 날씨</label>
+                        <select id="weather" required>
+                            <option value="1">☀️ 맑음</option>
+                            <option value="0.5">⛅ 흐림</option>
+                            <option value="0">🌧️ 비/눈</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group">
+                        <label>🏃 운동 했나요?</label>
+                        <select id="exercise" required>
+                            <option value="1">예</option>
+                            <option value="0">아니오</option>
+                        </select>
+                    </div>
+
+                    <button type="submit">데이터 추가 및 학습</button>
+                </form>
+            </div>
+
+            <!-- AI 예측 -->
+            <div class="card">
+                <h2>
+                    🔮 AI 예측
+                    <span class="badge learning">학습 중</span>
+                </h2>
+
+                <div class="info-box">
+                    <strong>🤖 AI가 예측합니다:</strong> 오늘 당신이 운동할 확률을 계산합니다.
+                </div>
+
+                <form id="predictForm">
+                    <div class="input-group">
+                        <label>😊 오늘 기분 (1-10)</label>
+                        <input type="number" id="pred_mood" min="1" max="10" required>
+                    </div>
+
+                    <div class="input-group">
+                        <label>😴 오늘 수면 (시간)</label>
+                        <input type="number" id="pred_sleep" min="0" max="24" step="0.5" required>
+                    </div>
+
+                    <div class="input-group">
+                        <label>🌤️ 오늘 날씨</label>
+                        <select id="pred_weather" required>
+                            <option value="1">☀️ 맑음</option>
+                            <option value="0.5">⛅ 흐림</option>
+                            <option value="0">🌧️ 비/눈</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="secondary">예측하기</button>
+                </form>
+
+                <div id="predictionResult"></div>
+
+                <div class="tips">
+                    <strong>💡 팁:</strong> 데이터가 많을수록 예측이 정확해집니다!
+                </div>
+            </div>
+
+            <!-- 학습 통계 -->
+            <div class="card full-width">
+                <h2>📊 AI 학습 통계</h2>
+
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <h3 id="dataCount">0</h3>
+                        <p>학습 데이터</p>
+                    </div>
+                    <div class="stat-box">
+                        <h3 id="predictionCount">0</h3>
+                        <p>예측 횟수</p>
+                    </div>
+                    <div class="stat-box">
+                        <h3 id="accuracy">0%</h3>
+                        <p>예측 정확도</p>
+                    </div>
+                </div>
+
+                <div class="info-box" style="margin-top: 20px;">
+                    <strong>🧠 사용된 AI 알고리즘:</strong> 로지스틱 회귀 (Logistic Regression)
+                    <br><strong>📍 학습 장소:</strong> 당신의 브라우저 (완전 오프라인!)
+                    <br><strong>💾 데이터 저장:</strong> LocalStorage (당신의 컴퓨터에만)
+                </div>
+            </div>
+
+            <!-- 학습 데이터 보기 -->
+            <div class="card full-width">
+                <h2>
+                    📚 학습 데이터
+                    <button onclick="exportData()" style="width: auto; padding: 8px 15px; margin: 0; font-size: 14px;">
+                        💾 내보내기
+                    </button>
+                </h2>
+
+                <div class="training-data" id="trainingData">
+                    <p style="text-align: center; color: #999; padding: 20px;">
+                        아직 데이터가 없습니다. 위에서 데이터를 입력해주세요!
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // 간단한 신경망 구현 (순수 JavaScript)
+        // ============================================
+
+        class SimpleNeuralNetwork {
+            constructor(inputSize) {
+                this.inputSize = inputSize;
+                // 가중치 초기화 (랜덤)
+                this.weights = Array(inputSize).fill(0).map(() => Math.random() * 2 - 1);
+                this.bias = Math.random() * 2 - 1;
+                this.learningRate = 0.1;
+            }
+
+            // 시그모이드 활성화 함수
+            sigmoid(x) {
+                return 1 / (1 + Math.exp(-x));
+            }
+
+            // 예측
+            predict(inputs) {
+                let sum = this.bias;
+                for (let i = 0; i < inputs.length; i++) {
+                    sum += inputs[i] * this.weights[i];
+                }
+                return this.sigmoid(sum);
+            }
+
+            // 학습 (경사하강법)
+            train(inputs, target, epochs = 100) {
+                for (let epoch = 0; epoch < epochs; epoch++) {
+                    // 순전파
+                    let prediction = this.predict(inputs);
+
+                    // 오차 계산
+                    let error = target - prediction;
+
+                    // 역전파 (가중치 업데이트)
+                    for (let i = 0; i < this.weights.length; i++) {
+                        this.weights[i] += this.learningRate * error * inputs[i] * prediction * (1 - prediction);
+                    }
+                    this.bias += this.learningRate * error * prediction * (1 - prediction);
+                }
+            }
+
+            // 배치 학습
+            trainBatch(dataSet, epochs = 100) {
+                for (let epoch = 0; epoch < epochs; epoch++) {
+                    for (let data of dataSet) {
+                        this.train(data.inputs, data.target, 1);
+                    }
+                }
+            }
+        }
+
+        // ============================================
+        // AI 관리 클래스
+        // ============================================
+
+        class PersonalAI {
+            constructor() {
+                this.ai = new SimpleNeuralNetwork(3); // 3개 입력: 기분, 수면, 날씨
+                this.trainingData = [];
+                this.stats = {
+                    dataCount: 0,
+                    predictionCount: 0,
+                    correctPredictions: 0
+                };
+                this.loadData();
+                this.updateUI();
+            }
+
+            // 데이터 추가 및 학습
+            addData(mood, sleep, weather, exercise) {
+                const data = {
+                    inputs: [
+                        mood / 10,        // 정규화 (0-1)
+                        sleep / 12,       // 정규화 (0-1)
+                        parseFloat(weather)
+                    ],
+                    target: parseInt(exercise),
+                    raw: { mood, sleep, weather, exercise },
+                    date: new Date().toISOString()
+                };
+
+                this.trainingData.push(data);
+                this.stats.dataCount++;
+
+                // AI 학습
+                if (this.trainingData.length >= 3) {
+                    this.ai.trainBatch(this.trainingData, 50);
+                }
+
+                this.saveData();
+                this.updateUI();
+            }
+
+            // 예측
+            predict(mood, sleep, weather) {
+                if (this.trainingData.length < 3) {
+                    return { prediction: null, confidence: 0, message: "최소 3개의 데이터가 필요합니다!" };
+                }
+
+                const inputs = [
+                    mood / 10,
+                    sleep / 12,
+                    parseFloat(weather)
+                ];
+
+                const probability = this.ai.predict(inputs);
+                const prediction = probability > 0.5 ? 1 : 0;
+                const confidence = Math.abs(probability - 0.5) * 200; // 0-100%
+
+                this.stats.predictionCount++;
+                this.saveData();
+                this.updateUI();
+
+                return {
+                    prediction,
+                    probability,
+                    confidence,
+                    message: prediction === 1
+                        ? `오늘 운동할 가능성이 높습니다! 🏃`
+                        : `오늘은 휴식이 필요할 것 같습니다 😴`
+                };
+            }
+
+            // 정확도 계산
+            calculateAccuracy() {
+                if (this.stats.predictionCount === 0) return 0;
+                return Math.round((this.stats.correctPredictions / this.stats.predictionCount) * 100);
+            }
+
+            // 데이터 저장
+            saveData() {
+                localStorage.setItem('myAI_training', JSON.stringify(this.trainingData));
+                localStorage.setItem('myAI_stats', JSON.stringify(this.stats));
+                localStorage.setItem('myAI_weights', JSON.stringify({
+                    weights: this.ai.weights,
+                    bias: this.ai.bias
+                }));
+            }
+
+            // 데이터 불러오기
+            loadData() {
+                const savedData = localStorage.getItem('myAI_training');
+                const savedStats = localStorage.getItem('myAI_stats');
+                const savedWeights = localStorage.getItem('myAI_weights');
+
+                if (savedData) {
+                    this.trainingData = JSON.parse(savedData);
+                    this.stats = JSON.parse(savedStats) || this.stats;
+
+                    if (savedWeights) {
+                        const weights = JSON.parse(savedWeights);
+                        this.ai.weights = weights.weights;
+                        this.ai.bias = weights.bias;
+                    } else if (this.trainingData.length >= 3) {
+                        // 가중치가 없으면 다시 학습
+                        this.ai.trainBatch(this.trainingData, 100);
+                    }
+                }
+            }
+
+            // UI 업데이트
+            updateUI() {
+                document.getElementById('dataCount').textContent = this.stats.dataCount;
+                document.getElementById('predictionCount').textContent = this.stats.predictionCount;
+                document.getElementById('accuracy').textContent = this.calculateAccuracy() + '%';
+
+                // 학습 데이터 표시
+                const container = document.getElementById('trainingData');
+                if (this.trainingData.length === 0) {
+                    container.innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">아직 데이터가 없습니다.</p>';
+                } else {
+                    container.innerHTML = this.trainingData.map((data, index) => `
+                        <div class="data-entry">
+                            <strong>데이터 #${index + 1}</strong>
+                            <br>기분: ${data.raw.mood}/10 | 수면: ${data.raw.sleep}h |
+                            날씨: ${data.raw.weather == 1 ? '☀️' : data.raw.weather == 0.5 ? '⛅' : '🌧️'} |
+                            운동: ${data.raw.exercise == 1 ? '✅' : '❌'}
+                            <small>${new Date(data.date).toLocaleString('ko-KR')}</small>
+                            <button class="delete-btn" onclick="ai.deleteData(${index})">삭제</button>
+                        </div>
+                    `).reverse().join('');
+                }
+            }
+
+            // 데이터 삭제
+            deleteData(index) {
+                this.trainingData.splice(index, 1);
+                this.stats.dataCount--;
+
+                // 재학습
+                if (this.trainingData.length >= 3) {
+                    this.ai = new SimpleNeuralNetwork(3);
+                    this.ai.trainBatch(this.trainingData, 100);
+                }
+
+                this.saveData();
+                this.updateUI();
+            }
+
+            // 데이터 내보내기
+            exportData() {
+                const data = {
+                    trainingData: this.trainingData,
+                    stats: this.stats,
+                    weights: {
+                        weights: this.ai.weights,
+                        bias: this.ai.bias
+                    },
+                    exportDate: new Date().toISOString()
+                };
+
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `my-ai-backup-${new Date().toISOString().split('T')[0]}.json`;
+                a.click();
+            }
+        }
+
+        // ============================================
+        // 초기화
+        // ============================================
+
+        const ai = new PersonalAI();
+
+        // 오늘 날짜 설정
+        document.getElementById('date').valueAsDate = new Date();
+
+        // 데이터 입력 폼
+        document.getElementById('dataForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            const mood = parseFloat(document.getElementById('mood').value);
+            const sleep = parseFloat(document.getElementById('sleep').value);
+            const weather = document.getElementById('weather').value;
+            const exercise = document.getElementById('exercise').value;
+
+            ai.addData(mood, sleep, weather, exercise);
+
+            // 폼 초기화
+            e.target.reset();
+            document.getElementById('date').valueAsDate = new Date();
+
+            alert('✅ 데이터가 추가되고 AI가 학습했습니다!');
+        });
+
+        // 예측 폼
+        document.getElementById('predictForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            const mood = parseFloat(document.getElementById('pred_mood').value);
+            const sleep = parseFloat(document.getElementById('pred_sleep').value);
+            const weather = document.getElementById('pred_weather').value;
+
+            const result = ai.predict(mood, sleep, weather);
+
+            const resultDiv = document.getElementById('predictionResult');
+
+            if (result.prediction === null) {
+                resultDiv.innerHTML = `
+                    <div class="prediction" style="background: #f5576c;">
+                        ⚠️ ${result.message}
+                    </div>
+                `;
+            } else {
+                resultDiv.innerHTML = `
+                    <div class="prediction">
+                        ${result.message}
+                        <div class="confidence">
+                            확률: ${(result.probability * 100).toFixed(1)}%
+                            | 신뢰도: ${result.confidence.toFixed(1)}%
+                        </div>
+                    </div>
+                `;
+            }
+        });
+
+        // 데이터 내보내기
+        function exportData() {
+            ai.exportData();
+        }
+    </script>
+</body>
+</html>

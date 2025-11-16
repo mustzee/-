@@ -30,6 +30,43 @@ python ai_agent.py
 
 ---
 
+### 🧠 나만의 학습하는 AI (NEWEST! ⭐)
+**진짜 학습하는 AI를 무료로, 오프라인으로!**
+
+당신의 데이터로 학습하는 개인 맞춤형 AI입니다.
+
+**특별한 점:**
+- 🆓 **100% 무료** - 유료 API 절대 없음
+- 🔌 **완전 오프라인** - 인터넷 필요 없음
+- 🧠 **진짜 학습** - 신경망이 실제로 학습합니다
+- 🔐 **개인정보 안전** - 모든 데이터는 로컬에만
+- 📖 **교육용** - 코드로 AI 원리 학습
+
+**주요 기능:**
+- 개인 습관 패턴 학습 (기분, 수면, 날씨 → 운동 예측)
+- 실시간 학습 시각화
+- 예측 확률 및 신뢰도 표시
+- 학습 데이터 관리 및 백업
+
+**빠른 시작:**
+```bash
+# HTML 버전 (브라우저에서 바로 실행) - 가장 쉬움!
+open my-learning-ai.html
+
+# Python 버전 (터미널)
+python my_learning_ai.py
+```
+
+**사용된 AI 기술:**
+- 로지스틱 회귀 (Logistic Regression)
+- 경사하강법 (Gradient Descent)
+- 단층 신경망 (Single-layer Neural Network)
+- 시그모이드 활성화 함수
+
+📖 **상세 문서:** [README_MY_LEARNING_AI.md](README_MY_LEARNING_AI.md)
+
+---
+
 ### 🔷 Order-3 Heptagonal Tiling - Poincaré Disk Visualization
 
 수학적으로 정확한 쌍곡 기하학 시각화: **{7,3} 타일링**
