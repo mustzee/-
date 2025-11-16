@@ -1,0 +1,1326 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>광고 컬렉션 매니저 - Ad Collection Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #3b82f6;
+            --success-color: #10b981;
+            --danger-color: #ef4444;
+            --warning-color: #f59e0b;
+            --dark-bg: #1f2937;
+            --darker-bg: #111827;
+            --light-bg: #f9fafb;
+            --border-color: #e5e7eb;
+            --text-primary: #111827;
+            --text-secondary: #6b7280;
+            --card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+            --card-shadow-hover: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 30px;
+            background: var(--light-bg);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            text-align: center;
+            transition: transform 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--card-shadow-hover);
+        }
+
+        .stat-card .number {
+            font-size: 2.5em;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+
+        .stat-card .label {
+            color: var(--text-secondary);
+            margin-top: 5px;
+        }
+
+        .controls {
+            padding: 30px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .control-section {
+            margin-bottom: 25px;
+        }
+
+        .control-section h3 {
+            margin-bottom: 15px;
+            color: var(--text-primary);
+            font-size: 1.2em;
+        }
+
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        button, .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--secondary-color);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn-success {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .btn-danger {
+            background: var(--danger-color);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .btn-secondary {
+            background: var(--text-secondary);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #4b5563;
+        }
+
+        input[type="text"], input[type="url"], textarea, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+            font-family: inherit;
+        }
+
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .drop-zone {
+            border: 3px dashed var(--border-color);
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            background: var(--light-bg);
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 20px;
+        }
+
+        .drop-zone.drag-over {
+            border-color: var(--primary-color);
+            background: rgba(37, 99, 235, 0.05);
+        }
+
+        .drop-zone:hover {
+            border-color: var(--primary-color);
+        }
+
+        .drop-zone-text {
+            font-size: 1.1em;
+            color: var(--text-secondary);
+        }
+
+        .filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+            padding: 20px 30px;
+            background: var(--light-bg);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .filter-item {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .view-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .view-btn {
+            padding: 8px 16px;
+            background: white;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .view-btn.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        .tags-input {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 8px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            min-height: 45px;
+            align-items: center;
+        }
+
+        .tag {
+            background: var(--primary-color);
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .tag-remove {
+            cursor: pointer;
+            font-weight: bold;
+            opacity: 0.8;
+        }
+
+        .tag-remove:hover {
+            opacity: 1;
+        }
+
+        .tag-input-field {
+            border: none;
+            outline: none;
+            flex: 1;
+            min-width: 100px;
+            font-size: 14px;
+        }
+
+        .gallery {
+            padding: 30px;
+            min-height: 400px;
+        }
+
+        .gallery.grid-view {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 25px;
+        }
+
+        .gallery.list-view {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .ad-card {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.3s;
+            box-shadow: var(--card-shadow);
+        }
+
+        .ad-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--card-shadow-hover);
+        }
+
+        .ad-card.list-view {
+            display: flex;
+            flex-direction: row;
+        }
+
+        .ad-card.list-view .ad-image {
+            width: 200px;
+            height: 150px;
+            flex-shrink: 0;
+        }
+
+        .ad-image {
+            width: 100%;
+            height: 220px;
+            background: var(--light-bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .ad-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .ad-image.video {
+            background: #000;
+        }
+
+        .video-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .video-overlay:hover {
+            transform: translate(-50%, -50%) scale(1.1);
+        }
+
+        .ad-content {
+            padding: 20px;
+        }
+
+        .ad-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .ad-title {
+            font-size: 1.1em;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 5px;
+        }
+
+        .ad-category {
+            display: inline-block;
+            padding: 4px 12px;
+            background: var(--primary-color);
+            color: white;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .ad-category.social { background: #8b5cf6; }
+        .ad-category.banner { background: #f59e0b; }
+        .ad-category.video { background: #ef4444; }
+        .ad-category.display { background: #10b981; }
+
+        .ad-meta {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 12px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .ad-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .ad-description {
+            color: var(--text-secondary);
+            font-size: 14px;
+            line-height: 1.5;
+            margin-bottom: 12px;
+        }
+
+        .ad-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+
+        .ad-tag {
+            background: var(--light-bg);
+            color: var(--text-primary);
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+
+        .ad-actions {
+            display: flex;
+            gap: 8px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .ad-action-btn {
+            padding: 6px 12px;
+            font-size: 12px;
+            flex: 1;
+        }
+
+        .favorite {
+            color: var(--warning-color);
+            cursor: pointer;
+            font-size: 20px;
+            transition: transform 0.2s;
+        }
+
+        .favorite:hover {
+            transform: scale(1.2);
+        }
+
+        .favorite.active {
+            animation: heartbeat 0.3s;
+        }
+
+        @keyframes heartbeat {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.3); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .empty-state h3 {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            max-width: 600px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-header h2 {
+            font-size: 1.8em;
+            color: var(--text-primary);
+        }
+
+        .modal-close {
+            font-size: 28px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            line-height: 1;
+            transition: color 0.3s;
+        }
+
+        .modal-close:hover {
+            color: var(--danger-color);
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 16px 24px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            gap: 12px;
+            animation: slideIn 0.3s;
+        }
+
+        .notification.active {
+            display: flex;
+        }
+
+        .notification.success {
+            border-left: 4px solid var(--success-color);
+        }
+
+        .notification.error {
+            border-left: 4px solid var(--danger-color);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .image-preview {
+            margin-top: 15px;
+            max-width: 100%;
+            max-height: 300px;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .gallery.grid-view {
+                grid-template-columns: 1fr;
+            }
+
+            .filters {
+                flex-direction: column;
+            }
+
+            .filter-item {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>📊 광고 컬렉션 매니저</h1>
+            <p>다양한 형태의 광고를 수집하고 효율적으로 정리하세요</p>
+        </div>
+
+        <!-- Statistics -->
+        <div class="stats">
+            <div class="stat-card">
+                <div class="number" id="totalAds">0</div>
+                <div class="label">전체 광고</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" id="imageAds">0</div>
+                <div class="label">이미지 광고</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" id="videoAds">0</div>
+                <div class="label">영상 광고</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" id="favoriteAds">0</div>
+                <div class="label">즐겨찾기</div>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls">
+            <div class="control-section">
+                <h3>🎯 광고 추가</h3>
+                <div class="button-group">
+                    <button class="btn btn-primary" onclick="openAddModal()">
+                        ➕ 새 광고 추가
+                    </button>
+                    <button class="btn btn-success" onclick="exportData()">
+                        💾 데이터 내보내기
+                    </button>
+                    <button class="btn btn-secondary" onclick="importData()">
+                        📂 데이터 가져오기
+                    </button>
+                    <button class="btn btn-danger" onclick="clearAllData()">
+                        🗑️ 전체 삭제
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="filters">
+            <div class="filter-item">
+                <input type="text" id="searchInput" placeholder="🔍 검색 (제목, 설명, 태그...)" oninput="applyFilters()">
+            </div>
+            <div class="filter-item">
+                <select id="categoryFilter" onchange="applyFilters()">
+                    <option value="">모든 카테고리</option>
+                    <option value="social">소셜 미디어</option>
+                    <option value="banner">배너</option>
+                    <option value="video">영상</option>
+                    <option value="display">디스플레이</option>
+                </select>
+            </div>
+            <div class="filter-item">
+                <select id="platformFilter" onchange="applyFilters()">
+                    <option value="">모든 플랫폼</option>
+                    <option value="Facebook">Facebook</option>
+                    <option value="Instagram">Instagram</option>
+                    <option value="YouTube">YouTube</option>
+                    <option value="Google Ads">Google Ads</option>
+                    <option value="TikTok">TikTok</option>
+                    <option value="Twitter">Twitter</option>
+                    <option value="LinkedIn">LinkedIn</option>
+                    <option value="기타">기타</option>
+                </select>
+            </div>
+            <div class="filter-item">
+                <select id="sortFilter" onchange="applyFilters()">
+                    <option value="newest">최신순</option>
+                    <option value="oldest">오래된순</option>
+                    <option value="title">제목순</option>
+                </select>
+            </div>
+            <div class="view-controls">
+                <button class="view-btn active" onclick="setView('grid')" id="gridViewBtn">
+                    ▦ 그리드
+                </button>
+                <button class="view-btn" onclick="setView('list')" id="listViewBtn">
+                    ☰ 리스트
+                </button>
+            </div>
+        </div>
+
+        <!-- Gallery -->
+        <div class="gallery grid-view" id="gallery">
+            <div class="empty-state">
+                <div class="empty-state-icon">📭</div>
+                <h3>아직 광고가 없습니다</h3>
+                <p>상단의 "새 광고 추가" 버튼을 클릭하여 첫 광고를 추가하세요!</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Modal -->
+    <div class="modal" id="adModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">새 광고 추가</h2>
+                <span class="modal-close" onclick="closeAddModal()">&times;</span>
+            </div>
+
+            <div class="form-group">
+                <label>광고 유형</label>
+                <select id="adType" onchange="handleAdTypeChange()">
+                    <option value="image">이미지 광고</option>
+                    <option value="video">영상 광고 (URL)</option>
+                </select>
+            </div>
+
+            <div id="imageUploadSection">
+                <div class="drop-zone" id="dropZone">
+                    <div class="drop-zone-text">
+                        🖼️ 이미지를 드래그 앤 드롭하거나 클릭하여 선택하세요<br>
+                        <small>또는 Ctrl+V로 붙여넣기</small>
+                    </div>
+                    <input type="file" id="fileInput" accept="image/*" style="display: none;" onchange="handleFileSelect(event)">
+                </div>
+                <img id="imagePreview" class="image-preview" style="display: none;">
+            </div>
+
+            <div id="videoUrlSection" style="display: none;">
+                <div class="form-group">
+                    <label>영상 URL</label>
+                    <input type="url" id="videoUrl" placeholder="YouTube, Vimeo URL을 입력하세요">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>제목 *</label>
+                    <input type="text" id="adTitle" placeholder="광고 제목" required>
+                </div>
+                <div class="form-group">
+                    <label>카테고리 *</label>
+                    <select id="adCategory">
+                        <option value="social">소셜 미디어</option>
+                        <option value="banner">배너</option>
+                        <option value="video">영상</option>
+                        <option value="display">디스플레이</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>플랫폼</label>
+                    <select id="adPlatform">
+                        <option value="Facebook">Facebook</option>
+                        <option value="Instagram">Instagram</option>
+                        <option value="YouTube">YouTube</option>
+                        <option value="Google Ads">Google Ads</option>
+                        <option value="TikTok">TikTok</option>
+                        <option value="Twitter">Twitter</option>
+                        <option value="LinkedIn">LinkedIn</option>
+                        <option value="기타">기타</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>광고 URL (선택)</label>
+                    <input type="url" id="adUrl" placeholder="https://...">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>설명</label>
+                <textarea id="adDescription" rows="3" placeholder="광고에 대한 설명을 입력하세요"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>태그 (엔터로 추가)</label>
+                <div class="tags-input" id="tagsContainer">
+                    <input type="text" class="tag-input-field" id="tagInput" placeholder="태그 입력..." onkeypress="handleTagInput(event)">
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button class="btn btn-primary" onclick="saveAd()" style="flex: 1">
+                    💾 저장
+                </button>
+                <button class="btn btn-secondary" onclick="closeAddModal()">
+                    취소
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div class="notification" id="notification">
+        <span id="notificationText"></span>
+    </div>
+
+    <!-- Hidden file input for import -->
+    <input type="file" id="importInput" accept=".json" style="display: none;" onchange="handleImport(event)">
+
+    <script>
+        // Global state
+        let ads = [];
+        let currentView = 'grid';
+        let editingId = null;
+        let currentTags = [];
+        let currentImageData = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadAds();
+            renderAds();
+            updateStats();
+            setupDropZone();
+            setupPasteHandler();
+        });
+
+        // Load ads from localStorage
+        function loadAds() {
+            const stored = localStorage.getItem('adCollection');
+            if (stored) {
+                ads = JSON.parse(stored);
+            }
+        }
+
+        // Save ads to localStorage
+        function saveAds() {
+            localStorage.setItem('adCollection', JSON.stringify(ads));
+            updateStats();
+        }
+
+        // Update statistics
+        function updateStats() {
+            document.getElementById('totalAds').textContent = ads.length;
+            document.getElementById('imageAds').textContent = ads.filter(ad => ad.type === 'image').length;
+            document.getElementById('videoAds').textContent = ads.filter(ad => ad.type === 'video').length;
+            document.getElementById('favoriteAds').textContent = ads.filter(ad => ad.favorite).length;
+        }
+
+        // Open add modal
+        function openAddModal() {
+            editingId = null;
+            currentTags = [];
+            currentImageData = null;
+            document.getElementById('modalTitle').textContent = '새 광고 추가';
+            document.getElementById('adModal').classList.add('active');
+            resetForm();
+        }
+
+        // Close modal
+        function closeAddModal() {
+            document.getElementById('adModal').classList.remove('active');
+            resetForm();
+        }
+
+        // Reset form
+        function resetForm() {
+            document.getElementById('adTitle').value = '';
+            document.getElementById('adDescription').value = '';
+            document.getElementById('adUrl').value = '';
+            document.getElementById('videoUrl').value = '';
+            document.getElementById('imagePreview').style.display = 'none';
+            document.getElementById('imagePreview').src = '';
+            currentTags = [];
+            currentImageData = null;
+            renderTagsInput();
+        }
+
+        // Handle ad type change
+        function handleAdTypeChange() {
+            const type = document.getElementById('adType').value;
+            document.getElementById('imageUploadSection').style.display = type === 'image' ? 'block' : 'none';
+            document.getElementById('videoUrlSection').style.display = type === 'video' ? 'block' : 'none';
+        }
+
+        // Setup drop zone
+        function setupDropZone() {
+            const dropZone = document.getElementById('dropZone');
+            const fileInput = document.getElementById('fileInput');
+
+            dropZone.addEventListener('click', () => fileInput.click());
+
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('drag-over');
+            });
+
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('drag-over');
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('drag-over');
+                const files = e.dataTransfer.files;
+                if (files.length > 0 && files[0].type.startsWith('image/')) {
+                    handleFile(files[0]);
+                }
+            });
+        }
+
+        // Setup paste handler
+        function setupPasteHandler() {
+            document.addEventListener('paste', (e) => {
+                if (document.getElementById('adModal').classList.contains('active')) {
+                    const items = e.clipboardData.items;
+                    for (let item of items) {
+                        if (item.type.startsWith('image/')) {
+                            const file = item.getAsFile();
+                            handleFile(file);
+                            break;
+                        }
+                    }
+                }
+            });
+        }
+
+        // Handle file select
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                handleFile(file);
+            }
+        }
+
+        // Handle file
+        function handleFile(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                currentImageData = e.target.result;
+                const preview = document.getElementById('imagePreview');
+                preview.src = currentImageData;
+                preview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Handle tag input
+        function handleTagInput(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                const input = event.target;
+                const tag = input.value.trim();
+                if (tag && !currentTags.includes(tag)) {
+                    currentTags.push(tag);
+                    input.value = '';
+                    renderTagsInput();
+                }
+            }
+        }
+
+        // Remove tag
+        function removeTag(tag) {
+            currentTags = currentTags.filter(t => t !== tag);
+            renderTagsInput();
+        }
+
+        // Render tags input
+        function renderTagsInput() {
+            const container = document.getElementById('tagsContainer');
+            const input = document.getElementById('tagInput');
+
+            container.innerHTML = '';
+
+            currentTags.forEach(tag => {
+                const tagEl = document.createElement('span');
+                tagEl.className = 'tag';
+                tagEl.innerHTML = `${tag} <span class="tag-remove" onclick="removeTag('${tag}')">×</span>`;
+                container.appendChild(tagEl);
+            });
+
+            container.appendChild(input);
+        }
+
+        // Extract YouTube ID
+        function getYouTubeID(url) {
+            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+            const match = url.match(regExp);
+            return (match && match[2].length === 11) ? match[2] : null;
+        }
+
+        // Save ad
+        function saveAd() {
+            const type = document.getElementById('adType').value;
+            const title = document.getElementById('adTitle').value.trim();
+            const category = document.getElementById('adCategory').value;
+            const platform = document.getElementById('adPlatform').value;
+            const description = document.getElementById('adDescription').value.trim();
+            const url = document.getElementById('adUrl').value.trim();
+
+            if (!title) {
+                showNotification('제목을 입력해주세요', 'error');
+                return;
+            }
+
+            let imageUrl = '';
+            let videoUrl = '';
+
+            if (type === 'image') {
+                if (!currentImageData && !editingId) {
+                    showNotification('이미지를 선택해주세요', 'error');
+                    return;
+                }
+                imageUrl = currentImageData || (editingId ? ads.find(a => a.id === editingId).imageUrl : '');
+            } else {
+                videoUrl = document.getElementById('videoUrl').value.trim();
+                if (!videoUrl) {
+                    showNotification('영상 URL을 입력해주세요', 'error');
+                    return;
+                }
+                // Generate thumbnail for YouTube
+                const youtubeId = getYouTubeID(videoUrl);
+                if (youtubeId) {
+                    imageUrl = `https://img.youtube.com/vi/${youtubeId}/maxresdefault.jpg`;
+                }
+            }
+
+            const ad = {
+                id: editingId || Date.now(),
+                type,
+                title,
+                category,
+                platform,
+                description,
+                url,
+                imageUrl,
+                videoUrl,
+                tags: currentTags,
+                favorite: editingId ? ads.find(a => a.id === editingId).favorite : false,
+                createdAt: editingId ? ads.find(a => a.id === editingId).createdAt : new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+
+            if (editingId) {
+                const index = ads.findIndex(a => a.id === editingId);
+                ads[index] = ad;
+                showNotification('광고가 수정되었습니다', 'success');
+            } else {
+                ads.unshift(ad);
+                showNotification('광고가 추가되었습니다', 'success');
+            }
+
+            saveAds();
+            renderAds();
+            closeAddModal();
+        }
+
+        // Edit ad
+        function editAd(id) {
+            const ad = ads.find(a => a.id === id);
+            if (!ad) return;
+
+            editingId = id;
+            currentTags = [...ad.tags];
+            currentImageData = ad.imageUrl;
+
+            document.getElementById('modalTitle').textContent = '광고 수정';
+            document.getElementById('adType').value = ad.type;
+            document.getElementById('adTitle').value = ad.title;
+            document.getElementById('adCategory').value = ad.category;
+            document.getElementById('adPlatform').value = ad.platform;
+            document.getElementById('adDescription').value = ad.description;
+            document.getElementById('adUrl').value = ad.url;
+
+            if (ad.type === 'video') {
+                document.getElementById('videoUrl').value = ad.videoUrl;
+            }
+
+            if (ad.imageUrl) {
+                document.getElementById('imagePreview').src = ad.imageUrl;
+                document.getElementById('imagePreview').style.display = 'block';
+            }
+
+            handleAdTypeChange();
+            renderTagsInput();
+            document.getElementById('adModal').classList.add('active');
+        }
+
+        // Delete ad
+        function deleteAd(id) {
+            if (confirm('이 광고를 삭제하시겠습니까?')) {
+                ads = ads.filter(a => a.id !== id);
+                saveAds();
+                renderAds();
+                showNotification('광고가 삭제되었습니다', 'success');
+            }
+        }
+
+        // Toggle favorite
+        function toggleFavorite(id) {
+            const ad = ads.find(a => a.id === id);
+            if (ad) {
+                ad.favorite = !ad.favorite;
+                saveAds();
+                renderAds();
+            }
+        }
+
+        // Open ad URL
+        function openAdUrl(url) {
+            if (url) {
+                window.open(url, '_blank');
+            }
+        }
+
+        // Set view
+        function setView(view) {
+            currentView = view;
+            document.getElementById('gridViewBtn').classList.toggle('active', view === 'grid');
+            document.getElementById('listViewBtn').classList.toggle('active', view === 'list');
+            const gallery = document.getElementById('gallery');
+            gallery.className = `gallery ${view}-view`;
+            renderAds();
+        }
+
+        // Apply filters
+        function applyFilters() {
+            renderAds();
+        }
+
+        // Render ads
+        function renderAds() {
+            const gallery = document.getElementById('gallery');
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const categoryFilter = document.getElementById('categoryFilter').value;
+            const platformFilter = document.getElementById('platformFilter').value;
+            const sortFilter = document.getElementById('sortFilter').value;
+
+            let filteredAds = ads.filter(ad => {
+                const matchesSearch = !searchTerm ||
+                    ad.title.toLowerCase().includes(searchTerm) ||
+                    ad.description.toLowerCase().includes(searchTerm) ||
+                    ad.tags.some(tag => tag.toLowerCase().includes(searchTerm));
+
+                const matchesCategory = !categoryFilter || ad.category === categoryFilter;
+                const matchesPlatform = !platformFilter || ad.platform === platformFilter;
+
+                return matchesSearch && matchesCategory && matchesPlatform;
+            });
+
+            // Sort
+            if (sortFilter === 'newest') {
+                filteredAds.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            } else if (sortFilter === 'oldest') {
+                filteredAds.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+            } else if (sortFilter === 'title') {
+                filteredAds.sort((a, b) => a.title.localeCompare(b.title));
+            }
+
+            if (filteredAds.length === 0) {
+                gallery.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🔍</div>
+                        <h3>검색 결과가 없습니다</h3>
+                        <p>다른 검색어나 필터를 시도해보세요</p>
+                    </div>
+                `;
+                return;
+            }
+
+            gallery.innerHTML = filteredAds.map(ad => `
+                <div class="ad-card ${currentView === 'list' ? 'list-view' : ''}">
+                    <div class="ad-image ${ad.type === 'video' ? 'video' : ''}" ${ad.videoUrl ? `onclick="openAdUrl('${ad.videoUrl}')"` : ''}>
+                        ${ad.imageUrl ? `<img src="${ad.imageUrl}" alt="${ad.title}">` : '<div style="color: #999;">이미지 없음</div>'}
+                        ${ad.type === 'video' ? '<div class="video-overlay">▶</div>' : ''}
+                    </div>
+                    <div class="ad-content">
+                        <div class="ad-header">
+                            <div>
+                                <div class="ad-title">${ad.title}</div>
+                                <span class="ad-category ${ad.category}">${getCategoryName(ad.category)}</span>
+                            </div>
+                            <span class="favorite ${ad.favorite ? 'active' : ''}" onclick="toggleFavorite(${ad.id})">
+                                ${ad.favorite ? '★' : '☆'}
+                            </span>
+                        </div>
+                        <div class="ad-meta">
+                            <div class="ad-meta-item">📱 ${ad.platform}</div>
+                            <div class="ad-meta-item">📅 ${formatDate(ad.createdAt)}</div>
+                        </div>
+                        ${ad.description ? `<div class="ad-description">${ad.description}</div>` : ''}
+                        ${ad.tags.length > 0 ? `
+                            <div class="ad-tags">
+                                ${ad.tags.map(tag => `<span class="ad-tag">#${tag}</span>`).join('')}
+                            </div>
+                        ` : ''}
+                        <div class="ad-actions">
+                            ${ad.url ? `<button class="btn btn-primary ad-action-btn" onclick="openAdUrl('${ad.url}')">🔗 보기</button>` : ''}
+                            <button class="btn btn-secondary ad-action-btn" onclick="editAd(${ad.id})">✏️ 수정</button>
+                            <button class="btn btn-danger ad-action-btn" onclick="deleteAd(${ad.id})">🗑️ 삭제</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Get category name
+        function getCategoryName(category) {
+            const names = {
+                social: '소셜',
+                banner: '배너',
+                video: '영상',
+                display: '디스플레이'
+            };
+            return names[category] || category;
+        }
+
+        // Format date
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            const now = new Date();
+            const diffTime = Math.abs(now - date);
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays === 0) {
+                return '오늘';
+            } else if (diffDays === 1) {
+                return '어제';
+            } else if (diffDays < 7) {
+                return `${diffDays}일 전`;
+            } else {
+                return date.toLocaleDateString('ko-KR');
+            }
+        }
+
+        // Export data
+        function exportData() {
+            const dataStr = JSON.stringify(ads, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `ad-collection-${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+            showNotification('데이터가 내보내기 되었습니다', 'success');
+        }
+
+        // Import data
+        function importData() {
+            document.getElementById('importInput').click();
+        }
+
+        // Handle import
+        function handleImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const importedAds = JSON.parse(e.target.result);
+                    if (Array.isArray(importedAds)) {
+                        ads = importedAds;
+                        saveAds();
+                        renderAds();
+                        showNotification('데이터가 가져오기 되었습니다', 'success');
+                    } else {
+                        showNotification('잘못된 파일 형식입니다', 'error');
+                    }
+                } catch (error) {
+                    showNotification('파일을 읽는 중 오류가 발생했습니다', 'error');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // Clear all data
+        function clearAllData() {
+            if (confirm('모든 광고 데이터를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+                ads = [];
+                saveAds();
+                renderAds();
+                showNotification('모든 데이터가 삭제되었습니다', 'success');
+            }
+        }
+
+        // Show notification
+        function showNotification(message, type = 'success') {
+            const notification = document.getElementById('notification');
+            const notificationText = document.getElementById('notificationText');
+
+            notificationText.textContent = message;
+            notification.className = `notification ${type} active`;
+
+            setTimeout(() => {
+                notification.classList.remove('active');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
