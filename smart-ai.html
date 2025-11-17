@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>똑똑한 AI - 자연어 이해 + 재귀적 사고</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: white;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .subtitle {
+            text-align: center;
+            color: rgba(255,255,255,0.95);
+            margin-bottom: 30px;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .chat-container {
+            height: 500px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            padding: 15px;
+            border-radius: 15px;
+            max-width: 80%;
+            animation: fadeIn 0.3s;
+            line-height: 1.6;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.user {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin-left: auto;
+            text-align: right;
+        }
+
+        .message.ai {
+            background: white;
+            color: #333;
+            border: 2px solid #e0e0e0;
+        }
+
+        .message.ai .thinking {
+            color: #999;
+            font-size: 0.9em;
+            font-style: italic;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px dashed #ddd;
+        }
+
+        .message.ai .insight {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        .input-area {
+            display: flex;
+            gap: 10px;
+        }
+
+        textarea {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #667eea;
+            border-radius: 15px;
+            font-size: 16px;
+            resize: none;
+            font-family: inherit;
+            outline: none;
+            min-height: 60px;
+        }
+
+        textarea:focus {
+            border-color: #764ba2;
+            box-shadow: 0 0 10px rgba(102, 126, 234, 0.3);
+        }
+
+        button {
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+        }
+
+        .insights-panel {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+        }
+
+        .insights-panel h3 {
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .insight-item {
+            background: rgba(255,255,255,0.2);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            backdrop-filter: blur(10px);
+        }
+
+        .pattern-viz {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+
+        .pattern-bar {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .pattern-label {
+            width: 120px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .pattern-progress {
+            flex: 1;
+            height: 25px;
+            background: #e0e0e0;
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .pattern-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        .examples {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin-top: 15px;
+            border-radius: 5px;
+        }
+
+        .examples strong {
+            color: #2196F3;
+        }
+
+        .timeline {
+            position: relative;
+            padding-left: 30px;
+            margin-top: 20px;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 10px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .timeline-item {
+            position: relative;
+            padding: 15px;
+            background: white;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -24px;
+            top: 20px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #667eea;
+            border: 3px solid white;
+        }
+
+        .timeline-date {
+            color: #999;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+
+        .timeline-content {
+            color: #333;
+        }
+
+        @media (max-width: 768px) {
+            .input-area {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧠 똑똑한 AI</h1>
+        <p class="subtitle">
+            자연어 이해 · 재귀적 사고 · 자동 해석 · 100% 오프라인
+        </p>
+
+        <!-- 대화 인터페이스 -->
+        <div class="card chat-container">
+            <h2>💬 자연어로 대화하세요</h2>
+
+            <div class="messages" id="messages">
+                <div class="message ai">
+                    <strong>AI:</strong> 안녕하세요! 저는 자연어를 이해하고 재귀적으로 생각하는 AI입니다. 😊<br><br>
+
+                    <div class="examples">
+                        <strong>💡 이렇게 말해보세요:</strong><br>
+                        • "오늘 기분이 별로 안 좋고 잠도 못 잤어"<br>
+                        • "요즘 계속 피곤한데 왜 그럴까?"<br>
+                        • "지난주랑 이번주 비교해줘"<br>
+                        • "내일은 어떨 것 같아?"<br>
+                        • "나한테 조언 좀 해줘"
+                    </div>
+                </div>
+            </div>
+
+            <div class="input-area">
+                <textarea
+                    id="userInput"
+                    placeholder="자연어로 말하세요... (예: 오늘 기분 안 좋고 잠 못 잤어)"
+                    onkeypress="if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); sendMessage(); }"
+                ></textarea>
+                <button onclick="sendMessage()">전송</button>
+            </div>
+        </div>
+
+        <!-- AI 인사이트 -->
+        <div class="card">
+            <div class="insights-panel">
+                <h3>🔍 AI가 발견한 패턴</h3>
+                <div id="insights">
+                    <div class="insight-item">
+                        데이터를 입력하면 AI가 자동으로 패턴을 분석합니다!
+                    </div>
+                </div>
+
+                <div class="pattern-viz">
+                    <h4 style="margin-bottom: 15px; color: #333;">상관관계 분석</h4>
+                    <div id="correlations">
+                        <p style="color: #999; text-align: center;">데이터가 쌓이면 자동으로 표시됩니다</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 타임라인 -->
+        <div class="card">
+            <h2>📅 활동 타임라인</h2>
+            <div class="timeline" id="timeline">
+                <p style="color: #999; text-align: center; padding: 20px;">
+                    대화를 시작하면 타임라인이 생성됩니다
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // 자연어 처리 엔진 (오프라인)
+        // ============================================
+
+        class NaturalLanguageProcessor {
+            constructor() {
+                // 감정 사전
+                this.sentiments = {
+                    positive: ['좋아', '행복', '기쁘', '최고', '완벽', '잘', '만족', '편안'],
+                    negative: ['안좋', '나빠', '힘들', '피곤', '스트레스', '우울', '슬프', '짜증']
+                };
+
+                // 숫자 단어
+                this.numbers = {
+                    '한': 1, '두': 2, '세': 3, '네': 4, '다섯': 5,
+                    '여섯': 6, '일곱': 7, '여덟': 8, '아홉': 9, '열': 10
+                };
+
+                // 날씨 키워드
+                this.weather = {
+                    sunny: ['맑', '화창', '쾌청', '날씨좋', '햇살'],
+                    cloudy: ['흐림', '구름', '흐리'],
+                    rainy: ['비', '눈', '장마', '우천']
+                };
+            }
+
+            // 자연어 → 구조화된 데이터
+            parse(text) {
+                const result = {
+                    mood: this.extractMood(text),
+                    sleep: this.extractSleep(text),
+                    weather: this.extractWeather(text),
+                    exercise: this.extractExercise(text),
+                    intent: this.extractIntent(text),
+                    sentiment: this.analyzeSentiment(text)
+                };
+
+                return result;
+            }
+
+            extractMood(text) {
+                // "기분 7" or "7점" 패턴
+                const numberMatch = text.match(/(\d+)점?|기분.*?(\d+)/);
+                if (numberMatch) {
+                    return parseInt(numberMatch[1] || numberMatch[2]);
+                }
+
+                // 감정 단어로 추정
+                if (this.containsAny(text, this.sentiments.positive)) {
+                    return 8;
+                }
+                if (this.containsAny(text, this.sentiments.negative)) {
+                    return 4;
+                }
+
+                return null;
+            }
+
+            extractSleep(text) {
+                // "7시간" or "7시간 잤어"
+                const match = text.match(/(\d+(?:\.\d+)?)\s*시간/);
+                if (match) {
+                    return parseFloat(match[1]);
+                }
+
+                // "못 잤어", "잠 못 잤어"
+                if (text.includes('못 잤') || text.includes('못자')) {
+                    return 4;
+                }
+
+                // "잘 잤어"
+                if (text.includes('잘 잤') || text.includes('푹 잤')) {
+                    return 8;
+                }
+
+                return null;
+            }
+
+            extractWeather(text) {
+                if (this.containsAny(text, this.weather.sunny)) return 1;
+                if (this.containsAny(text, this.weather.rainy)) return 0;
+                if (this.containsAny(text, this.weather.cloudy)) return 0.5;
+                return null;
+            }
+
+            extractExercise(text) {
+                if (text.includes('운동했') || text.includes('운동 했')) return 1;
+                if (text.includes('안 했') || text.includes('못 했')) return 0;
+                return null;
+            }
+
+            extractIntent(text) {
+                if (text.includes('왜') || text.includes('이유')) return 'explain';
+                if (text.includes('비교') || text.includes('차이')) return 'compare';
+                if (text.includes('예측') || text.includes('내일') || text.includes('다음')) return 'predict';
+                if (text.includes('조언') || text.includes('추천')) return 'advise';
+                return 'inform';
+            }
+
+            analyzeSentiment(text) {
+                const posCount = this.countMatches(text, this.sentiments.positive);
+                const negCount = this.countMatches(text, this.sentiments.negative);
+
+                if (posCount > negCount) return 'positive';
+                if (negCount > posCount) return 'negative';
+                return 'neutral';
+            }
+
+            containsAny(text, words) {
+                return words.some(word => text.includes(word));
+            }
+
+            countMatches(text, words) {
+                return words.filter(word => text.includes(word)).length;
+            }
+        }
+
+        // ============================================
+        // 재귀적 신경망 (간단한 LSTM 스타일)
+        // ============================================
+
+        class RecursiveAI {
+            constructor() {
+                this.memory = [];  // 과거 상태 기억
+                this.maxMemory = 7;  // 지난 7일
+                this.weights = {
+                    current: [0.5, 0.5, 0.5],  // 현재 입력
+                    memory: [0.3, 0.3, 0.3],   // 과거 기억
+                    bias: 0
+                };
+                this.learningRate = 0.1;
+            }
+
+            // 재귀적 예측 (과거 데이터 고려)
+            predictWithContext(currentInputs) {
+                let prediction = this.weights.bias;
+
+                // 현재 입력
+                for (let i = 0; i < currentInputs.length; i++) {
+                    prediction += currentInputs[i] * this.weights.current[i];
+                }
+
+                // 과거 기억 (최근 데이터일수록 가중치 높음)
+                const recentMemory = this.memory.slice(-this.maxMemory);
+                for (let t = 0; t < recentMemory.length; t++) {
+                    const timeWeight = (t + 1) / recentMemory.length;  // 최근일수록 높음
+                    const memInputs = recentMemory[t].inputs;
+
+                    for (let i = 0; i < memInputs.length; i++) {
+                        prediction += memInputs[i] * this.weights.memory[i] * timeWeight;
+                    }
+                }
+
+                return this.sigmoid(prediction);
+            }
+
+            // 학습 (과거 데이터 포함)
+            learn(inputs, target) {
+                const prediction = this.predictWithContext(inputs);
+                const error = target - prediction;
+                const gradient = prediction * (1 - prediction);
+
+                // 가중치 업데이트
+                for (let i = 0; i < this.weights.current.length; i++) {
+                    this.weights.current[i] += this.learningRate * error * inputs[i] * gradient;
+                }
+
+                this.weights.bias += this.learningRate * error * gradient;
+
+                // 메모리에 저장
+                this.memory.push({ inputs, target, prediction });
+                if (this.memory.length > 10) {
+                    this.memory.shift();
+                }
+            }
+
+            sigmoid(x) {
+                return 1 / (1 + Math.exp(-x));
+            }
+
+            // 트렌드 분석
+            analyzeTrend() {
+                if (this.memory.length < 3) return null;
+
+                const recent = this.memory.slice(-7);
+                const values = recent.map(m => m.target);
+
+                // 이동 평균
+                const avg = values.reduce((a, b) => a + b, 0) / values.length;
+
+                // 추세 (상승/하락)
+                const firstHalf = values.slice(0, Math.floor(values.length / 2));
+                const secondHalf = values.slice(Math.floor(values.length / 2));
+
+                const firstAvg = firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
+                const secondAvg = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
+
+                return {
+                    average: avg,
+                    trend: secondAvg > firstAvg ? 'increasing' : 'decreasing',
+                    consistency: this.calculateConsistency(values)
+                };
+            }
+
+            calculateConsistency(values) {
+                const avg = values.reduce((a, b) => a + b, 0) / values.length;
+                const variance = values.reduce((sum, val) => sum + Math.pow(val - avg, 2), 0) / values.length;
+                return 1 - Math.min(variance, 1);  // 0-1 범위
+            }
+        }
+
+        // ============================================
+        // 똑똑한 AI 에이전트
+        // ============================================
+
+        class SmartAI {
+            constructor() {
+                this.nlp = new NaturalLanguageProcessor();
+                this.recursiveAI = new RecursiveAI();
+                this.context = [];
+                this.insights = [];
+
+                this.loadData();
+            }
+
+            // 자연어 입력 처리
+            processNaturalLanguage(text) {
+                const parsed = this.nlp.parse(text);
+
+                // 의도에 따라 다른 응답
+                switch (parsed.intent) {
+                    case 'explain':
+                        return this.explainPatterns();
+                    case 'compare':
+                        return this.comparePeriods();
+                    case 'predict':
+                        return this.predictFuture(parsed);
+                    case 'advise':
+                        return this.giveAdvice();
+                    default:
+                        return this.handleInform(parsed);
+                }
+            }
+
+            // 데이터 입력 처리
+            handleInform(parsed) {
+                const thinking = this.generateThinking(parsed);
+                const response = this.generateResponse(parsed);
+
+                // 데이터가 충분히 파싱되었으면 학습
+                if (parsed.mood && parsed.sleep && parsed.exercise !== null) {
+                    const inputs = [
+                        parsed.mood / 10,
+                        parsed.sleep / 12,
+                        parsed.weather || 0.5
+                    ];
+
+                    this.recursiveAI.learn(inputs, parsed.exercise);
+
+                    // 컨텍스트에 저장
+                    this.context.push({
+                        date: new Date(),
+                        parsed,
+                        inputs
+                    });
+
+                    // 인사이트 생성
+                    this.generateInsights();
+                }
+
+                return { thinking, response, parsed };
+            }
+
+            // AI의 사고 과정 생성
+            generateThinking(parsed) {
+                const parts = [];
+
+                if (parsed.mood) {
+                    parts.push(`기분: ${parsed.mood}/10 인식`);
+                }
+                if (parsed.sleep) {
+                    parts.push(`수면: ${parsed.sleep}시간 파악`);
+                }
+                if (parsed.weather !== null) {
+                    const weatherStr = parsed.weather === 1 ? '맑음' : parsed.weather === 0 ? '비/눈' : '흐림';
+                    parts.push(`날씨: ${weatherStr} 감지`);
+                }
+                if (parsed.sentiment !== 'neutral') {
+                    parts.push(`감정: ${parsed.sentiment === 'positive' ? '긍정적' : '부정적'}`);
+                }
+
+                return parts.length > 0 ? parts.join(' | ') : '입력 분석 중...';
+            }
+
+            // 응답 생성
+            generateResponse(parsed) {
+                let response = '';
+
+                // 감정 공감
+                if (parsed.sentiment === 'negative') {
+                    response += '힘드셨겠어요. ';
+                } else if (parsed.sentiment === 'positive') {
+                    response += '좋은 하루를 보내셨네요! ';
+                }
+
+                // 데이터 확인
+                const confirmed = [];
+                if (parsed.mood) confirmed.push(`기분 ${parsed.mood}점`);
+                if (parsed.sleep) confirmed.push(`수면 ${parsed.sleep}시간`);
+                if (parsed.weather !== null) {
+                    const w = parsed.weather === 1 ? '맑은 날씨' : parsed.weather === 0 ? '비/눈' : '흐린 날씨';
+                    confirmed.push(w);
+                }
+
+                if (confirmed.length > 0) {
+                    response += `${confirmed.join(', ')}로 기록했습니다.`;
+                }
+
+                // 예측 (데이터가 있으면)
+                if (this.recursiveAI.memory.length >= 3 && parsed.mood && parsed.sleep) {
+                    const inputs = [
+                        parsed.mood / 10,
+                        parsed.sleep / 12,
+                        parsed.weather || 0.5
+                    ];
+                    const prob = this.recursiveAI.predictWithContext(inputs);
+                    const willExercise = prob > 0.5;
+
+                    response += `\n\n${willExercise ? '오늘 운동하실 것 같네요!' : '오늘은 휴식이 필요해 보여요.'} (확률: ${(prob * 100).toFixed(0)}%)`;
+                }
+
+                return response;
+            }
+
+            // 패턴 설명
+            explainPatterns() {
+                if (this.insights.length === 0) {
+                    return {
+                        thinking: '패턴 분석 중...',
+                        response: '아직 데이터가 부족해요. 최소 5개 이상의 데이터를 입력해주세요!',
+                        parsed: { intent: 'explain' }
+                    };
+                }
+
+                const trend = this.recursiveAI.analyzeTrend();
+                let response = '제가 발견한 패턴을 설명드릴게요:\n\n';
+
+                this.insights.forEach((insight, i) => {
+                    response += `${i + 1}. ${insight}\n`;
+                });
+
+                if (trend) {
+                    response += `\n최근 추세: ${trend.trend === 'increasing' ? '상승 중 📈' : '하락 중 📉'}`;
+                    response += `\n일관성: ${(trend.consistency * 100).toFixed(0)}%`;
+                }
+
+                return {
+                    thinking: '과거 데이터 분석 → 패턴 추출 → 설명 생성',
+                    response,
+                    parsed: { intent: 'explain' }
+                };
+            }
+
+            // 기간 비교
+            comparePeriods() {
+                if (this.context.length < 5) {
+                    return {
+                        thinking: '비교 분석 시도...',
+                        response: '비교하려면 최소 5일치 데이터가 필요해요!',
+                        parsed: { intent: 'compare' }
+                    };
+                }
+
+                const half = Math.floor(this.context.length / 2);
+                const firstHalf = this.context.slice(0, half);
+                const secondHalf = this.context.slice(half);
+
+                const avg1 = {
+                    mood: firstHalf.reduce((sum, c) => sum + (c.parsed.mood || 0), 0) / firstHalf.length,
+                    sleep: firstHalf.reduce((sum, c) => sum + (c.parsed.sleep || 0), 0) / firstHalf.length
+                };
+
+                const avg2 = {
+                    mood: secondHalf.reduce((sum, c) => sum + (c.parsed.mood || 0), 0) / secondHalf.length,
+                    sleep: secondHalf.reduce((sum, c) => sum + (c.parsed.sleep || 0), 0) / secondHalf.length
+                };
+
+                let response = '기간별 비교 결과:\n\n';
+                response += `전반부 평균:\n`;
+                response += `  기분: ${avg1.mood.toFixed(1)}점\n`;
+                response += `  수면: ${avg1.sleep.toFixed(1)}시간\n\n`;
+                response += `후반부 평균:\n`;
+                response += `  기분: ${avg2.mood.toFixed(1)}점 (${avg2.mood > avg1.mood ? '↑' : '↓'})\n`;
+                response += `  수면: ${avg2.sleep.toFixed(1)}시간 (${avg2.sleep > avg1.sleep ? '↑' : '↓'})\n`;
+
+                return {
+                    thinking: '데이터 분할 → 평균 계산 → 차이 분석',
+                    response,
+                    parsed: { intent: 'compare' }
+                };
+            }
+
+            // 미래 예측
+            predictFuture(parsed) {
+                if (this.recursiveAI.memory.length < 3) {
+                    return {
+                        thinking: '예측 시도...',
+                        response: '예측하려면 최소 3일치 데이터가 필요해요!',
+                        parsed
+                    };
+                }
+
+                // 최근 평균으로 내일 예측
+                const recent = this.recursiveAI.memory.slice(-3);
+                const avgInputs = [0, 0, 0];
+
+                for (let data of recent) {
+                    for (let i = 0; i < 3; i++) {
+                        avgInputs[i] += data.inputs[i];
+                    }
+                }
+
+                for (let i = 0; i < 3; i++) {
+                    avgInputs[i] /= recent.length;
+                }
+
+                const prob = this.recursiveAI.predictWithContext(avgInputs);
+                const trend = this.recursiveAI.analyzeTrend();
+
+                let response = '내일 예측:\n\n';
+                response += `운동 확률: ${(prob * 100).toFixed(0)}%\n`;
+                response += `추세: ${trend.trend === 'increasing' ? '개선 중' : '주의 필요'}\n\n`;
+
+                if (prob > 0.6) {
+                    response += '💪 좋은 컨디션이 예상되네요!';
+                } else if (prob > 0.4) {
+                    response += '🤔 보통 정도의 컨디션이 예상됩니다.';
+                } else {
+                    response += '😴 충분한 휴식이 필요해 보여요.';
+                }
+
+                return {
+                    thinking: '최근 패턴 분석 → 재귀적 예측 → 결과 생성',
+                    response,
+                    parsed
+                };
+            }
+
+            // 조언 생성
+            giveAdvice() {
+                if (this.context.length < 3) {
+                    return {
+                        thinking: '조언 생성 중...',
+                        response: '조언을 드리려면 좀 더 많은 데이터가 필요해요!',
+                        parsed: { intent: 'advise' }
+                    };
+                }
+
+                const recent = this.context.slice(-7);
+                const avgMood = recent.reduce((sum, c) => sum + (c.parsed.mood || 7), 0) / recent.length;
+                const avgSleep = recent.reduce((sum, c) => sum + (c.parsed.sleep || 7), 0) / recent.length;
+
+                let response = '당신을 위한 조언:\n\n';
+
+                if (avgSleep < 6) {
+                    response += '💤 수면 시간이 부족해요. 최소 7시간 수면을 목표로 해보세요.\n';
+                }
+
+                if (avgMood < 6) {
+                    response += '😊 기분이 좋지 않은 날이 많네요. 좋아하는 활동을 더 자주 해보세요.\n';
+                }
+
+                if (avgSleep >= 7 && avgMood >= 7) {
+                    response += '✨ 좋은 상태를 유지하고 계시네요! 계속 이 패턴을 유지하세요.';
+                }
+
+                return {
+                    thinking: '데이터 집계 → 패턴 분석 → 맞춤 조언 생성',
+                    response,
+                    parsed: { intent: 'advise' }
+                };
+            }
+
+            // 인사이트 생성
+            generateInsights() {
+                this.insights = [];
+
+                if (this.context.length < 5) return;
+
+                // 상관관계 분석
+                const correlations = this.calculateCorrelations();
+
+                if (correlations.mood > 0.5) {
+                    this.insights.push('기분이 좋을 때 운동을 더 자주 하시네요');
+                }
+
+                if (correlations.sleep > 0.5) {
+                    this.insights.push('충분히 주무시면 운동을 잘 하시는 편이에요');
+                }
+
+                if (correlations.weather > 0.3) {
+                    this.insights.push('날씨가 좋을 때 활동적이시네요');
+                }
+
+                // 일관성
+                const trend = this.recursiveAI.analyzeTrend();
+                if (trend && trend.consistency > 0.7) {
+                    this.insights.push('매우 규칙적인 생활 패턴을 보이고 계세요');
+                }
+
+                this.updateInsightsUI();
+            }
+
+            // 상관관계 계산
+            calculateCorrelations() {
+                const data = this.context.filter(c =>
+                    c.parsed.mood && c.parsed.sleep && c.parsed.exercise !== null
+                );
+
+                if (data.length < 3) return { mood: 0, sleep: 0, weather: 0 };
+
+                const exerciseAvg = data.reduce((sum, d) => sum + d.parsed.exercise, 0) / data.length;
+
+                const correlations = {};
+
+                ['mood', 'sleep', 'weather'].forEach((feature, idx) => {
+                    let sum = 0;
+                    for (let d of data) {
+                        const featureVal = idx === 0 ? d.parsed.mood / 10 :
+                                          idx === 1 ? d.parsed.sleep / 12 :
+                                          d.parsed.weather || 0.5;
+                        sum += (featureVal - 0.5) * (d.parsed.exercise - exerciseAvg);
+                    }
+                    correlations[feature] = Math.abs(sum / data.length);
+                });
+
+                return correlations;
+            }
+
+            // UI 업데이트
+            updateInsightsUI() {
+                const container = document.getElementById('insights');
+                container.innerHTML = this.insights.map(insight =>
+                    `<div class="insight-item">💡 ${insight}</div>`
+                ).join('');
+
+                // 상관관계 바 차트
+                const correlations = this.calculateCorrelations();
+                const corrContainer = document.getElementById('correlations');
+
+                corrContainer.innerHTML = `
+                    ${this.createCorrelationBar('기분', correlations.mood)}
+                    ${this.createCorrelationBar('수면', correlations.sleep)}
+                    ${this.createCorrelationBar('날씨', correlations.weather)}
+                `;
+            }
+
+            createCorrelationBar(label, value) {
+                const percentage = Math.min(value * 100, 100);
+                return `
+                    <div class="pattern-bar">
+                        <div class="pattern-label">${label}</div>
+                        <div class="pattern-progress">
+                            <div class="pattern-fill" style="width: ${percentage}%">
+                                ${percentage.toFixed(0)}%
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // 타임라인 업데이트
+            updateTimeline() {
+                const container = document.getElementById('timeline');
+                const recent = this.context.slice(-5).reverse();
+
+                if (recent.length === 0) {
+                    container.innerHTML = '<p style="color: #999; text-align: center;">데이터가 아직 없습니다</p>';
+                    return;
+                }
+
+                container.innerHTML = recent.map(c => {
+                    const date = new Date(c.date).toLocaleString('ko-KR', {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+
+                    return `
+                        <div class="timeline-item">
+                            <div class="timeline-date">${date}</div>
+                            <div class="timeline-content">
+                                기분: ${c.parsed.mood || '?'}/10 |
+                                수면: ${c.parsed.sleep || '?'}h |
+                                운동: ${c.parsed.exercise ? '✅' : '❌'}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            // 데이터 저장/불러오기
+            saveData() {
+                localStorage.setItem('smartAI_context', JSON.stringify(this.context));
+                localStorage.setItem('smartAI_memory', JSON.stringify(this.recursiveAI.memory));
+                localStorage.setItem('smartAI_weights', JSON.stringify(this.recursiveAI.weights));
+            }
+
+            loadData() {
+                const context = localStorage.getItem('smartAI_context');
+                const memory = localStorage.getItem('smartAI_memory');
+                const weights = localStorage.getItem('smartAI_weights');
+
+                if (context) {
+                    this.context = JSON.parse(context);
+                    this.context = this.context.map(c => ({
+                        ...c,
+                        date: new Date(c.date)
+                    }));
+                }
+
+                if (memory) {
+                    this.recursiveAI.memory = JSON.parse(memory);
+                }
+
+                if (weights) {
+                    this.recursiveAI.weights = JSON.parse(weights);
+                }
+
+                if (this.context.length > 0) {
+                    this.generateInsights();
+                    this.updateTimeline();
+                }
+            }
+        }
+
+        // ============================================
+        // 초기화
+        // ============================================
+
+        const smartAI = new SmartAI();
+
+        function sendMessage() {
+            const input = document.getElementById('userInput');
+            const text = input.value.trim();
+
+            if (!text) return;
+
+            // 사용자 메시지 표시
+            addMessage(text, 'user');
+            input.value = '';
+
+            // AI 처리
+            setTimeout(() => {
+                const result = smartAI.processNaturalLanguage(text);
+
+                let aiMessage = `<div class="thinking">🧠 ${result.thinking}</div>`;
+                aiMessage += result.response;
+
+                if (smartAI.insights.length > 0 && result.parsed.intent === 'inform') {
+                    aiMessage += `<div class="insight">💡 ${smartAI.insights[Math.floor(Math.random() * smartAI.insights.length)]}</div>`;
+                }
+
+                addMessage(aiMessage, 'ai');
+
+                // 타임라인 업데이트
+                smartAI.updateTimeline();
+
+                // 저장
+                smartAI.saveData();
+            }, 500);
+        }
+
+        function addMessage(html, sender) {
+            const messages = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}`;
+
+            if (sender === 'user') {
+                messageDiv.textContent = html;
+            } else {
+                messageDiv.innerHTML = `<strong>AI:</strong> ${html}`;
+            }
+
+            messages.appendChild(messageDiv);
+            messages.scrollTop = messages.scrollHeight;
+        }
+
+        // Enter로 전송 (Shift+Enter는 줄바꿈)
+        document.getElementById('userInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>
