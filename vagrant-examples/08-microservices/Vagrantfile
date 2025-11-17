@@ -1,0 +1,150 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "ubuntu/focal64"
+
+  config.vm.provider "virtualbox" do |vb|
+    vb.linked_clone = true
+  end
+
+  # API Gateway
+  config.vm.define "gateway", primary: true do |gateway|
+    gateway.vm.hostname = "api-gateway"
+    gateway.vm.network "private_network", ip: "192.168.60.10"
+    gateway.vm.network "forwarded_port", guest: 80, host: 8080, host_ip: "127.0.0.1"
+
+    gateway.vm.provider "virtualbox" do |vb|
+      vb.name = "api-gateway"
+      vb.memory = "512"
+      vb.cpus = 1
+    end
+
+    gateway.vm.provision "shell", path: "scripts/setup-gateway.sh"
+  end
+
+  # User Service
+  config.vm.define "user-service" do |svc|
+    svc.vm.hostname = "user-service"
+    svc.vm.network "private_network", ip: "192.168.60.21"
+
+    svc.vm.provider "virtualbox" do |vb|
+      vb.name = "user-service"
+      vb.memory = "512"
+      vb.cpus = 1
+    end
+
+    svc.vm.provision "shell", path: "scripts/setup-user-service.sh"
+  end
+
+  # Product Service
+  config.vm.define "product-service" do |svc|
+    svc.vm.hostname = "product-service"
+    svc.vm.network "private_network", ip: "192.168.60.22"
+
+    svc.vm.provider "virtualbox" do |vb|
+      vb.name = "product-service"
+      vb.memory = "512"
+      vb.cpus = 1
+    end
+
+    svc.vm.provision "shell", path: "scripts/setup-product-service.sh"
+  end
+
+  # Order Service
+  config.vm.define "order-service" do |svc|
+    svc.vm.hostname = "order-service"
+    svc.vm.network "private_network", ip: "192.168.60.23"
+
+    svc.vm.provider "virtualbox" do |vb|
+      vb.name = "order-service"
+      vb.memory = "512"
+      vb.cpus = 1
+    end
+
+    svc.vm.provision "shell", path: "scripts/setup-order-service.sh"
+  end
+
+  # Database Service
+  config.vm.define "database" do |db|
+    db.vm.hostname = "database"
+    db.vm.network "private_network", ip: "192.168.60.30"
+
+    db.vm.provider "virtualbox" do |vb|
+      vb.name = "microservices-db"
+      vb.memory = "1024"
+      vb.cpus = 1
+    end
+
+    db.vm.provision "shell", inline: <<-SHELL
+      export DEBIAN_FRONTEND=noninteractive
+      apt-get update
+      apt-get install -y postgresql postgresql-contrib
+
+      # PostgreSQL 외부 접속 허용
+      echo "host all all 0.0.0.0/0 md5" >> /etc/postgresql/12/main/pg_hba.conf
+      sed -i "s/#listen_addresses = 'localhost'/listen_addresses = '*'/g" /etc/postgresql/12/main/postgresql.conf
+
+      # 데이터베이스 및 사용자 생성
+      sudo -u postgres psql -c "CREATE DATABASE userdb;"
+      sudo -u postgres psql -c "CREATE DATABASE productdb;"
+      sudo -u postgres psql -c "CREATE DATABASE orderdb;"
+      sudo -u postgres psql -c "CREATE USER microuser WITH PASSWORD 'micro123';"
+      sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE userdb TO microuser;"
+      sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE productdb TO microuser;"
+      sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE orderdb TO microuser;"
+
+      systemctl restart postgresql
+    SHELL
+  end
+
+  # Redis Cache
+  config.vm.define "cache" do |cache|
+    cache.vm.hostname = "redis-cache"
+    cache.vm.network "private_network", ip: "192.168.60.40"
+
+    cache.vm.provider "virtualbox" do |vb|
+      vb.name = "microservices-cache"
+      vb.memory = "256"
+      vb.cpus = 1
+    end
+
+    cache.vm.provision "shell", inline: <<-SHELL
+      apt-get update
+      apt-get install -y redis-server
+
+      sed -i "s/bind 127.0.0.1/bind 0.0.0.0/" /etc/redis/redis.conf
+      systemctl restart redis-server
+    SHELL
+  end
+
+  # Message Queue (RabbitMQ)
+  config.vm.define "queue" do |queue|
+    queue.vm.hostname = "message-queue"
+    queue.vm.network "private_network", ip: "192.168.60.50"
+
+    queue.vm.provider "virtualbox" do |vb|
+      vb.name = "microservices-queue"
+      vb.memory = "512"
+      vb.cpus = 1
+    end
+
+    queue.vm.provision "shell", inline: <<-SHELL
+      apt-get update
+      apt-get install -y rabbitmq-server
+
+      # 관리자 플러그인 활성화
+      rabbitmq-plugins enable rabbitmq_management
+
+      # 사용자 생성
+      rabbitmqctl add_user admin admin123
+      rabbitmqctl set_user_tags admin administrator
+      rabbitmqctl set_permissions -p / admin ".*" ".*" ".*"
+
+      systemctl restart rabbitmq-server
+
+      echo "RabbitMQ Management: http://192.168.60.50:15672"
+      echo "Username: admin / Password: admin123"
+    SHELL
+  end
+end

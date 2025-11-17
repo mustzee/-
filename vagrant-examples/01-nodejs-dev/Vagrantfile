@@ -1,0 +1,79 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  # Ubuntu 20.04 LTS 사용
+  config.vm.box = "ubuntu/focal64"
+  config.vm.hostname = "nodejs-dev"
+
+  # 네트워크 설정
+  config.vm.network "forwarded_port", guest: 3000, host: 3000, host_ip: "127.0.0.1"
+  config.vm.network "forwarded_port", guest: 8080, host: 8080, host_ip: "127.0.0.1"
+  config.vm.network "private_network", ip: "192.168.50.10"
+
+  # VirtualBox 설정
+  config.vm.provider "virtualbox" do |vb|
+    vb.name = "nodejs-dev"
+    vb.memory = "2048"
+    vb.cpus = 2
+    vb.linked_clone = true
+  end
+
+  # 공유 폴더 설정 (NFS로 성능 향상)
+  # Windows 사용자는 type: "virtualbox"로 변경
+  if Gem.win_platform?
+    config.vm.synced_folder ".", "/vagrant"
+  else
+    config.vm.synced_folder ".", "/vagrant", type: "nfs"
+  end
+
+  # Node.js 개발 환경 프로비저닝
+  config.vm.provision "shell", inline: <<-SHELL
+    echo "=========================================="
+    echo "Node.js 개발 환경 설치 시작"
+    echo "=========================================="
+
+    # 시스템 업데이트
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update
+    apt-get upgrade -y
+
+    # Node.js 18.x 설치 (NodeSource)
+    echo "Node.js 설치 중..."
+    curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+    apt-get install -y nodejs
+
+    # 개발 도구 설치
+    apt-get install -y build-essential git
+
+    # 글로벌 npm 패키지 설치
+    npm install -g pm2 nodemon yarn
+
+    # Git 설정
+    sudo -u vagrant git config --global user.name "Vagrant User"
+    sudo -u vagrant git config --global user.email "vagrant@localhost"
+
+    # 프로젝트 디렉토리에 package.json이 있으면 의존성 설치
+    if [ -f /vagrant/package.json ]; then
+      echo "package.json 발견! npm install 실행 중..."
+      cd /vagrant
+      sudo -u vagrant npm install
+    fi
+
+    # 환경 변수 설정
+    echo 'export NODE_ENV=development' >> /home/vagrant/.bashrc
+
+    echo "=========================================="
+    echo "설치 완료!"
+    echo "Node.js 버전: $(node --version)"
+    echo "npm 버전: $(npm --version)"
+    echo "yarn 버전: $(yarn --version)"
+    echo "=========================================="
+    echo ""
+    echo "사용법:"
+    echo "  vagrant ssh"
+    echo "  cd /vagrant"
+    echo "  node app.js"
+    echo "=========================================="
+  SHELL
+end

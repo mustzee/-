@@ -1,0 +1,195 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "ubuntu/focal64"
+
+  # 공통 Provider 설정
+  config.vm.provider "virtualbox" do |vb|
+    vb.linked_clone = true
+  end
+
+  # 웹 서버 1
+  config.vm.define "web1" do |web|
+    web.vm.hostname = "web1"
+    web.vm.network "private_network", ip: "192.168.50.101"
+    web.vm.network "forwarded_port", guest: 80, host: 8081, host_ip: "127.0.0.1"
+
+    web.vm.provider "virtualbox" do |vb|
+      vb.name = "web1"
+      vb.memory = "1024"
+      vb.cpus = 1
+    end
+
+    web.vm.provision "shell", inline: <<-SHELL
+      apt-get update
+      apt-get install -y nginx
+
+      cat > /var/www/html/index.html << 'EOF'
+<!DOCTYPE html>
+<html>
+<head><title>Web Server 1</title></head>
+<body>
+  <h1>Web Server 1</h1>
+  <p>IP: 192.168.50.101</p>
+  <p>Hostname: web1</p>
+</body>
+</html>
+EOF
+
+      systemctl restart nginx
+    SHELL
+  end
+
+  # 웹 서버 2
+  config.vm.define "web2" do |web|
+    web.vm.hostname = "web2"
+    web.vm.network "private_network", ip: "192.168.50.102"
+    web.vm.network "forwarded_port", guest: 80, host: 8082, host_ip: "127.0.0.1"
+
+    web.vm.provider "virtualbox" do |vb|
+      vb.name = "web2"
+      vb.memory = "1024"
+      vb.cpus = 1
+    end
+
+    web.vm.provision "shell", inline: <<-SHELL
+      apt-get update
+      apt-get install -y nginx
+
+      cat > /var/www/html/index.html << 'EOF'
+<!DOCTYPE html>
+<html>
+<head><title>Web Server 2</title></head>
+<body>
+  <h1>Web Server 2</h1>
+  <p>IP: 192.168.50.102</p>
+  <p>Hostname: web2</p>
+</body>
+</html>
+EOF
+
+      systemctl restart nginx
+    SHELL
+  end
+
+  # 로드 밸런서
+  config.vm.define "lb", primary: true do |lb|
+    lb.vm.hostname = "loadbalancer"
+    lb.vm.network "private_network", ip: "192.168.50.100"
+    lb.vm.network "forwarded_port", guest: 80, host: 8080, host_ip: "127.0.0.1"
+
+    lb.vm.provider "virtualbox" do |vb|
+      vb.name = "loadbalancer"
+      vb.memory = "512"
+      vb.cpus = 1
+    end
+
+    lb.vm.provision "shell", inline: <<-SHELL
+      apt-get update
+      apt-get install -y nginx
+
+      cat > /etc/nginx/nginx.conf << 'EOF'
+user www-data;
+worker_processes auto;
+pid /run/nginx.pid;
+
+events {
+    worker_connections 768;
+}
+
+http {
+    upstream backend {
+        server 192.168.50.101:80;
+        server 192.168.50.102:80;
+    }
+
+    server {
+        listen 80;
+        server_name localhost;
+
+        location / {
+            proxy_pass http://backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        }
+    }
+}
+EOF
+
+      systemctl restart nginx
+
+      echo "=========================================="
+      echo "로드 밸런서 설정 완료!"
+      echo "http://localhost:8080 으로 접속하세요"
+      echo "=========================================="
+    SHELL
+  end
+
+  # 데이터베이스 서버
+  config.vm.define "db" do |db|
+    db.vm.hostname = "database"
+    db.vm.network "private_network", ip: "192.168.50.110"
+    db.vm.network "forwarded_port", guest: 3306, host: 3306, host_ip: "127.0.0.1"
+
+    db.vm.provider "virtualbox" do |vb|
+      vb.name = "database"
+      vb.memory = "1024"
+      vb.cpus = 1
+    end
+
+    db.vm.provision "shell", inline: <<-SHELL
+      export DEBIAN_FRONTEND=noninteractive
+      apt-get update
+      apt-get install -y mysql-server
+
+      # MySQL 외부 접속 허용
+      sed -i "s/bind-address.*/bind-address = 0.0.0.0/" /etc/mysql/mysql.conf.d/mysqld.cnf
+
+      # Root 비밀번호 설정 및 외부 접속 허용
+      mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'root';"
+      mysql -e "CREATE USER IF NOT EXISTS 'root'@'%' IDENTIFIED BY 'root';"
+      mysql -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;"
+      mysql -e "FLUSH PRIVILEGES;"
+
+      systemctl restart mysql
+
+      echo "=========================================="
+      echo "MySQL 설치 완료!"
+      echo "Host: localhost:3306"
+      echo "User: root"
+      echo "Password: root"
+      echo "=========================================="
+    SHELL
+  end
+
+  # 캐시 서버 (Redis)
+  config.vm.define "cache" do |cache|
+    cache.vm.hostname = "cache"
+    cache.vm.network "private_network", ip: "192.168.50.120"
+    cache.vm.network "forwarded_port", guest: 6379, host: 6379, host_ip: "127.0.0.1"
+
+    cache.vm.provider "virtualbox" do |vb|
+      vb.name = "cache"
+      vb.memory = "512"
+      vb.cpus = 1
+    end
+
+    cache.vm.provision "shell", inline: <<-SHELL
+      apt-get update
+      apt-get install -y redis-server
+
+      # Redis 외부 접속 허용
+      sed -i "s/bind 127.0.0.1/bind 0.0.0.0/" /etc/redis/redis.conf
+
+      systemctl restart redis-server
+      systemctl enable redis-server
+
+      echo "=========================================="
+      echo "Redis 설치 완료!"
+      echo "Host: localhost:6379"
+      echo "=========================================="
+    SHELL
+  end
+end
