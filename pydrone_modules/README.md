@@ -1,17 +1,40 @@
-# pyDrone 제어 모듈 - Claude와 함께 개발
+# pyDrone 제어 모듈 - Claude Code와 함께 개발
 
 > **pyDrone vs Tello**: 실제 개발 가능성 검증 프로젝트
 
-## 프로젝트 개요
+[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org)
+[![MicroPython](https://img.shields.io/badge/MicroPython-1.20+-green.svg)](https://micropython.org)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-이 프로젝트는 **pyDrone 오픈소스 드론**으로 **Claude AI와 함께 어떤 수준까지 제어 모듈 개발이 가능한지**를 실제로 검증하기 위해 만들어졌습니다.
+## 🚀 빠른 시작
+
+pyDrone을 구매하셨나요? 5분 만에 시작하세요!
+
+👉 **[빠른 시작 가이드](docs/QUICK_START.md)** ← 여기서 시작!
+
+## 📚 프로젝트 개요
+
+이 프로젝트는 **pyDrone 오픈소스 드론**으로 **Claude Code와 함께 어떤 수준까지 제어 모듈 개발이 가능한지**를 실제로 검증하기 위해 만들어졌습니다.
 
 Gemini가 Tello를 추천했지만, **진정한 드론 개발과 제어 학습**을 원한다면 pyDrone이 훨씬 더 적합합니다!
 
-## 디렉토리 구조
+### 왜 pyDrone + Claude Code인가?
+
+- ✅ **완전한 제어**: 펌웨어부터 알고리즘까지 모두 수정 가능
+- ✅ **깊은 학습**: PID, 센서 퓨전, 제어 이론 실전 학습
+- ✅ **Claude Code**: AI 파트너와 함께 빠른 개발
+- ✅ **무한 확장**: GPS, Lidar, 카메라 등 자유로운 하드웨어 확장
+
+## 📁 디렉토리 구조
 
 ```
 pydrone_modules/
+├── docs/                    # 📖 완전한 가이드 문서
+│   ├── QUICK_START.md       # ⚡ 5분 빠른 시작
+│   ├── 01_GETTING_STARTED.md  # 🔌 하드웨어 설정 및 연결
+│   ├── 02_CLAUDE_CODE_WORKFLOW.md  # 🤖 Claude와 개발하기
+│   ├── 03_WIFI_WEBREPL.md   # 📡 WiFi 무선 개발
+│   └── 04_DEBUGGING_TIPS.md # 🐛 디버깅 및 문제 해결
 ├── flight_control/          # 비행 제어 모듈
 │   └── pid_controller.py    # PID 컨트롤러 (Tello 불가능!)
 ├── sensors/                 # 센서 처리 모듈
@@ -20,8 +43,19 @@ pydrone_modules/
 │   └── waypoint_navigation.py  # 웨이포인트 비행
 ├── telemetry/              # 텔레메트리 (향후 추가)
 └── examples/               # 사용 예제
-    └── pydrone_vs_tello_demo.py  # 비교 데모
+    ├── pydrone_vs_tello_demo.py  # 비교 데모
+    └── complete_flight_example.py  # 완전한 비행 예제
 ```
+
+## 📖 문서 가이드
+
+| 문서 | 내용 | 대상 | 시간 |
+|------|------|------|------|
+| [빠른 시작](docs/QUICK_START.md) | 5분 만에 시작하기 | 초보자 | 5분 |
+| [시작 가이드](docs/01_GETTING_STARTED.md) | 하드웨어 설정, USB/WiFi 연결 | 모든 사용자 | 30분 |
+| [Claude Code 워크플로우](docs/02_CLAUDE_CODE_WORKFLOW.md) | AI와 함께 효율적으로 개발하기 | 개발자 | 20분 |
+| [WiFi & WebREPL](docs/03_WIFI_WEBREPL.md) | 무선 개발 및 실시간 모니터링 | 중급 | 30분 |
+| [디버깅 팁](docs/04_DEBUGGING_TIPS.md) | 문제 해결 및 최적화 | 모든 사용자 | 20분 |
 
 ## 핵심 기능
 
