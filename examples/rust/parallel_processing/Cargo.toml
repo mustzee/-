@@ -1,0 +1,13 @@
+[package]
+name = "parallel_processing"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rayon = "1.7"
+rand = "0.8"
+num_cpus = "1.16"
+
+[[bin]]
+name = "parallel_demo"
+path = "src/main.rs"
