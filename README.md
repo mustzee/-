@@ -14,13 +14,13 @@
 **가장 간단함 - 브라우저에서 바로 실행!**
 ```bash
 # 그냥 파일 열기
-open standalone.html
+open examples/standalone.html
 ```
 - ✅ 설치 불필요
 - ✅ 온라인 환경 지원 (CodePen, JSFiddle)
 - ✅ 마우스 드래그/줌 인터랙션
 
-**파일**: `standalone.html`, `index.html`, `hyperbolic.js`
+**폴더**: `examples/`, `src/javascript/`
 
 ### 2. ⚛️ React
 **모던 웹 프레임워크 + 애니메이션**
@@ -39,14 +39,15 @@ npm start
 ### 3. 🐍 Python
 **데이터 과학자/연구자용**
 ```bash
-pip install numpy matplotlib
+cd src/python
+pip install -r requirements.txt
 python hyperbolic_tiling.py
 ```
 - ✅ matplotlib 기반 고품질 렌더링
 - ✅ 인터랙티브 슬라이더
 - ✅ Jupyter Notebook 호환 가능
 
-**파일**: `hyperbolic_tiling.py`, `requirements.txt`
+**폴더**: `src/python/`
 
 ### 4. ☕ Java Swing
 **데스크톱 네이티브 애플리케이션**
@@ -86,36 +87,48 @@ java -jar target/hyperbolic-tiling.jar
 - 타일 깊이 조절 가능 (Depth 1-6)
 - 인터랙티브 컨트롤
 
-## 📁 파일 구조
+## 📁 폴더 구조
 
 ```
 .
-├── standalone.html              # 단일 파일 HTML 버전 (권장) ⭐
-├── index.html                   # HTML + 외부 JS
-├── hyperbolic.js                # 쌍곡 기하학 구현
-├── hyperbolic_tiling.py         # Python 구현
-├── requirements.txt             # Python 의존성
-├── README.md                    # 메인 문서
-├── README_PYTHON.md             # Python 전용 문서
+├── docs/                                # 📚 문서 모음
+│   ├── distributed-systems-concepts.md  # 분산 시스템 개념 정리
+│   └── python-guide.md                  # Python 구현 가이드
 │
-├── react-hyperbolic/            # React 버전
+├── examples/                            # 🎨 HTML 데모 파일들
+│   ├── standalone.html                  # 단일 파일 HTML 버전 (권장) ⭐
+│   ├── index.html                       # HTML + 외부 JS
+│   ├── heptagon-tiling-fixed.html       # 수정된 타일링 버전
+│   ├── heptagon-tiling-topology-fixed.html
+│   └── heptagonal-tiling-advanced.html  # 고급 기능 버전
+│
+├── src/                                 # 💻 소스 코드
+│   ├── javascript/
+│   │   └── hyperbolic.js                # 쌍곡 기하학 구현 (공통)
+│   └── python/
+│       ├── hyperbolic_tiling.py         # Python 구현
+│       └── requirements.txt             # Python 의존성
+│
+├── react-hyperbolic/                    # ⚛️ React 버전
 │   ├── src/
-│   │   ├── App.js              # 메인 컴포넌트
-│   │   ├── hyperbolic.js       # 로직
-│   │   └── App.css             # 스타일
+│   │   ├── App.js                       # 메인 컴포넌트
+│   │   ├── hyperbolic.js                # 로직
+│   │   └── App.css                      # 스타일
 │   ├── package.json
 │   └── README.md
 │
-└── java-hyperbolic/             # Java Swing 버전
-    ├── src/main/java/hyperbolic/
-    │   ├── HyperbolicViewer.java      # 메인 애플리케이션
-    │   ├── PoincarePanel.java         # 렌더링 패널
-    │   ├── HeptagonalTiling.java      # 타일링 생성
-    │   ├── Complex.java               # 복소수
-    │   └── MobiusTransform.java       # Möbius 변환
-    ├── pom.xml                         # Maven 빌드
-    ├── build.sh                        # 빌드 스크립트
-    └── README.md
+├── java-hyperbolic/                     # ☕ Java Swing 버전
+│   ├── src/main/java/hyperbolic/
+│   │   ├── HyperbolicViewer.java        # 메인 애플리케이션
+│   │   ├── PoincarePanel.java           # 렌더링 패널
+│   │   ├── HeptagonalTiling.java        # 타일링 생성
+│   │   ├── Complex.java                 # 복소수
+│   │   └── MobiusTransform.java         # Möbius 변환
+│   ├── pom.xml                          # Maven 빌드
+│   ├── build.sh                         # 빌드 스크립트
+│   └── README.md
+│
+└── README.md                            # 📖 메인 문서 (이 파일)
 ```
 
 ## 구현 세부사항
