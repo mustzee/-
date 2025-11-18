@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tiny AI - 경량 신경망 데모</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #333;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      color: white;
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 2.5em;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .subtitle {
+      color: rgba(255,255,255,0.9);
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 1.1em;
+    }
+
+    .demo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .demo-card {
+      background: white;
+      border-radius: 12px;
+      padding: 25px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+
+    .demo-card h2 {
+      color: #667eea;
+      margin-bottom: 15px;
+      font-size: 1.5em;
+      border-bottom: 2px solid #667eea;
+      padding-bottom: 10px;
+    }
+
+    .demo-card h3 {
+      color: #555;
+      margin: 15px 0 10px 0;
+      font-size: 1.1em;
+    }
+
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1em;
+      font-weight: 600;
+      transition: transform 0.2s, box-shadow 0.2s;
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    .input-group {
+      margin: 10px 0;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      color: #555;
+      font-weight: 500;
+    }
+
+    input[type="number"] {
+      width: 100%;
+      padding: 10px;
+      border: 2px solid #ddd;
+      border-radius: 6px;
+      font-size: 1em;
+      transition: border-color 0.3s;
+    }
+
+    input[type="number"]:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .output {
+      background: #f8f9fa;
+      border-left: 4px solid #667eea;
+      padding: 15px;
+      margin-top: 15px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      white-space: pre-wrap;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .canvas-container {
+      margin-top: 15px;
+      text-align: center;
+    }
+
+    canvas {
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      background: white;
+      max-width: 100%;
+    }
+
+    .status {
+      padding: 10px;
+      border-radius: 6px;
+      margin-top: 10px;
+      font-weight: 500;
+    }
+
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .status.info {
+      background: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+
+    .status.warning {
+      background: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeaa7;
+    }
+
+    .metric {
+      display: inline-block;
+      background: #667eea;
+      color: white;
+      padding: 5px 12px;
+      border-radius: 20px;
+      margin: 5px 5px 5px 0;
+      font-size: 0.9em;
+    }
+
+    .code-block {
+      background: #2d2d2d;
+      color: #f8f8f2;
+      padding: 15px;
+      border-radius: 6px;
+      overflow-x: auto;
+      margin-top: 10px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.9em;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧠 Tiny AI</h1>
+    <p class="subtitle">순수 JavaScript 경량 신경망 - 의존성 없음, 5KB 이하</p>
+
+    <div class="demo-grid">
+      <!-- XOR 문제 -->
+      <div class="demo-card">
+        <h2>🔢 XOR 문제 학습</h2>
+        <p>고전적인 XOR 문제를 신경망으로 해결합니다.</p>
+
+        <div class="input-group">
+          <label>학습 횟수 (Epochs):</label>
+          <input type="number" id="xor-epochs" value="2000" min="100" max="10000" step="100">
+        </div>
+
+        <button onclick="trainXOR()">학습 시작</button>
+
+        <div id="xor-output" class="output" style="display:none;"></div>
+
+        <div id="xor-test" style="display:none; margin-top:15px;">
+          <h3>테스트:</h3>
+          <div id="xor-results"></div>
+        </div>
+      </div>
+
+      <!-- 함수 근사 -->
+      <div class="demo-card">
+        <h2>📊 함수 근사 (Sin 함수)</h2>
+        <p>신경망으로 sin(x) 함수를 학습합니다.</p>
+
+        <div class="input-group">
+          <label>학습 횟수 (Epochs):</label>
+          <input type="number" id="sin-epochs" value="1000" min="100" max="5000" step="100">
+        </div>
+
+        <button onclick="trainSin()">학습 시작</button>
+
+        <div class="canvas-container">
+          <canvas id="sin-canvas" width="400" height="300"></canvas>
+        </div>
+
+        <div id="sin-output" class="output" style="display:none;"></div>
+      </div>
+
+      <!-- 이진 분류 -->
+      <div class="demo-card">
+        <h2>🎯 이진 분류 (원형 데이터)</h2>
+        <p>원형 경계를 가진 데이터를 분류합니다.</p>
+
+        <div class="input-group">
+          <label>학습 횟수 (Epochs):</label>
+          <input type="number" id="circle-epochs" value="1500" min="100" max="5000" step="100">
+        </div>
+
+        <button onclick="trainCircle()">학습 시작</button>
+
+        <div class="canvas-container">
+          <canvas id="circle-canvas" width="400" height="400"></canvas>
+        </div>
+
+        <div id="circle-output" class="output" style="display:none;"></div>
+      </div>
+
+      <!-- 모델 정보 -->
+      <div class="demo-card">
+        <h2>ℹ️ 모델 정보</h2>
+        <p>Tiny AI의 특징과 성능</p>
+
+        <h3>✨ 주요 특징:</h3>
+        <div style="margin-top: 10px;">
+          <span class="metric">순수 JavaScript</span>
+          <span class="metric">의존성 없음</span>
+          <span class="metric">~5KB</span>
+          <span class="metric">빠른 학습</span>
+          <span class="metric">브라우저/Node.js</span>
+        </div>
+
+        <h3>🏗️ 아키텍처:</h3>
+        <ul style="margin-left: 20px; margin-top: 10px; line-height: 1.8;">
+          <li>다층 퍼셉트론 (MLP)</li>
+          <li>활성화 함수: ReLU, Sigmoid, Tanh</li>
+          <li>역전파 알고리즘</li>
+          <li>미니배치 경사하강법</li>
+          <li>He 초기화</li>
+        </ul>
+
+        <h3>📦 사용 예제:</h3>
+        <div class="code-block">// 모델 생성
+const model = new TinyAI([2, 8, 4, 1], 'relu');
+
+// 학습
+model.train(X, y, {
+  epochs: 1000,
+  learningRate: 0.01
+});
+
+// 예측
+const result = model.predict([0.5, 0.8]);</div>
+
+        <button onclick="showModelInfo()">모델 요약 보기</button>
+        <div id="model-info" class="output" style="display:none;"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="tiny-ai.js"></script>
+  <script>
+    // XOR 문제 학습
+    function trainXOR() {
+      const epochs = parseInt(document.getElementById('xor-epochs').value);
+      const output = document.getElementById('xor-output');
+      output.style.display = 'block';
+      output.textContent = '학습 중...\n\n';
+
+      // XOR 데이터
+      const X = [[0, 0], [0, 1], [1, 0], [1, 1]];
+      const y = [[0], [1], [1], [0]];
+
+      // 모델 생성
+      const model = new TinyAI([2, 4, 1], 'sigmoid');
+
+      // 콘솔 출력 캡처
+      const originalLog = console.log;
+      console.log = (msg) => {
+        output.textContent += msg + '\n';
+        output.scrollTop = output.scrollHeight;
+      };
+
+      // 학습
+      setTimeout(() => {
+        model.train(X, y, {
+          epochs: epochs,
+          learningRate: 0.5,
+          batchSize: 4,
+          verbose: true
+        });
+
+        console.log = originalLog;
+
+        // 테스트
+        const testDiv = document.getElementById('xor-test');
+        const resultsDiv = document.getElementById('xor-results');
+        testDiv.style.display = 'block';
+
+        let html = '<div style="margin-top: 10px;">';
+        X.forEach((input, i) => {
+          const pred = model.predict(input)[0];
+          const expected = y[i][0];
+          const correct = Math.abs(pred - expected) < 0.5;
+          html += `
+            <div class="status ${correct ? 'success' : 'warning'}">
+              입력: [${input}] → 예측: ${pred.toFixed(4)} (정답: ${expected})
+              ${correct ? '✓' : '✗'}
+            </div>
+          `;
+        });
+        html += '</div>';
+        resultsDiv.innerHTML = html;
+      }, 100);
+    }
+
+    // Sin 함수 학습
+    function trainSin() {
+      const epochs = parseInt(document.getElementById('sin-epochs').value);
+      const output = document.getElementById('sin-output');
+      const canvas = document.getElementById('sin-canvas');
+      const ctx = canvas.getContext('2d');
+
+      output.style.display = 'block';
+      output.textContent = '학습 중...\n';
+
+      // 학습 데이터 생성
+      const X = [];
+      const y = [];
+      for (let i = 0; i < 100; i++) {
+        const x = (i / 100) * 2 * Math.PI;
+        X.push([x / (2 * Math.PI)]); // 정규화
+        y.push([Math.sin(x) * 0.5 + 0.5]); // [0, 1] 범위로
+      }
+
+      // 모델 생성
+      const model = new TinyAI([1, 10, 10, 1], 'tanh');
+
+      // 학습
+      setTimeout(() => {
+        model.train(X, y, {
+          epochs: epochs,
+          learningRate: 0.01,
+          batchSize: 10,
+          verbose: false
+        });
+
+        output.textContent = `✓ 학습 완료! (${epochs} epochs)\n`;
+
+        // 시각화
+        drawSinComparison(ctx, canvas, model, X, y);
+      }, 100);
+    }
+
+    function drawSinComparison(ctx, canvas, model, X, y) {
+      const w = canvas.width;
+      const h = canvas.height;
+      const padding = 40;
+
+      // 배경
+      ctx.fillStyle = '#f8f9fa';
+      ctx.fillRect(0, 0, w, h);
+
+      // 실제 함수 (파란색)
+      ctx.strokeStyle = '#667eea';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (let i = 0; i < 200; i++) {
+        const x = i / 200;
+        const yVal = Math.sin(x * 2 * Math.PI) * 0.5 + 0.5;
+        const px = padding + x * (w - 2 * padding);
+        const py = h - padding - yVal * (h - 2 * padding);
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+
+      // 예측 (빨간색)
+      ctx.strokeStyle = '#e74c3c';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (let i = 0; i < 200; i++) {
+        const x = i / 200;
+        const pred = model.predict([x])[0];
+        const px = padding + x * (w - 2 * padding);
+        const py = h - padding - pred * (h - 2 * padding);
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+
+      // 범례
+      ctx.font = '14px Arial';
+      ctx.fillStyle = '#667eea';
+      ctx.fillText('— 실제 sin(x)', w - 120, 30);
+      ctx.fillStyle = '#e74c3c';
+      ctx.fillText('— AI 예측', w - 120, 50);
+
+      // 축
+      ctx.strokeStyle = '#333';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(padding, h - padding);
+      ctx.lineTo(w - padding, h - padding);
+      ctx.moveTo(padding, padding);
+      ctx.lineTo(padding, h - padding);
+      ctx.stroke();
+    }
+
+    // 원형 분류 학습
+    function trainCircle() {
+      const epochs = parseInt(document.getElementById('circle-epochs').value);
+      const output = document.getElementById('circle-output');
+      const canvas = document.getElementById('circle-canvas');
+      const ctx = canvas.getContext('2d');
+
+      output.style.display = 'block';
+      output.textContent = '학습 중...\n';
+
+      // 원형 데이터 생성
+      const X = [];
+      const y = [];
+      for (let i = 0; i < 200; i++) {
+        const x = Math.random() * 2 - 1;
+        const y_coord = Math.random() * 2 - 1;
+        const dist = Math.sqrt(x * x + y_coord * y_coord);
+        X.push([x, y_coord]);
+        y.push([dist < 0.6 ? 1 : 0]); // 원 안쪽: 1, 바깥쪽: 0
+      }
+
+      // 모델 생성
+      const model = new TinyAI([2, 8, 8, 1], 'relu');
+
+      // 학습
+      setTimeout(() => {
+        model.train(X, y, {
+          epochs: epochs,
+          learningRate: 0.01,
+          batchSize: 20,
+          verbose: false
+        });
+
+        // 정확도 계산
+        const acc = accuracy(model, X, y);
+        output.textContent = `✓ 학습 완료!\n정확도: ${acc}%`;
+
+        // 시각화
+        drawCircleClassification(ctx, canvas, model, X, y);
+      }, 100);
+    }
+
+    function drawCircleClassification(ctx, canvas, model, X, y) {
+      const w = canvas.width;
+      const h = canvas.height;
+
+      // 배경 그라디언트 (결정 경계)
+      const resolution = 40;
+      for (let i = 0; i < resolution; i++) {
+        for (let j = 0; j < resolution; j++) {
+          const x = (i / resolution) * 2 - 1;
+          const y_coord = (j / resolution) * 2 - 1;
+          const pred = model.predict([x, y_coord])[0];
+
+          const alpha = Math.abs(pred - 0.5) * 2;
+          const color = pred > 0.5
+            ? `rgba(102, 126, 234, ${alpha * 0.3})`
+            : `rgba(231, 76, 60, ${alpha * 0.3})`;
+
+          ctx.fillStyle = color;
+          ctx.fillRect(
+            (i / resolution) * w,
+            (j / resolution) * h,
+            w / resolution,
+            h / resolution
+          );
+        }
+      }
+
+      // 데이터 포인트
+      X.forEach((point, i) => {
+        const px = ((point[0] + 1) / 2) * w;
+        const py = ((point[1] + 1) / 2) * h;
+        const label = y[i][0];
+
+        ctx.beginPath();
+        ctx.arc(px, py, 4, 0, 2 * Math.PI);
+        ctx.fillStyle = label === 1 ? '#667eea' : '#e74c3c';
+        ctx.fill();
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      });
+
+      // 범례
+      ctx.font = 'bold 14px Arial';
+      ctx.fillStyle = '#667eea';
+      ctx.fillText('● 클래스 1 (원 안쪽)', 10, 20);
+      ctx.fillStyle = '#e74c3c';
+      ctx.fillText('● 클래스 0 (원 바깥)', 10, 40);
+    }
+
+    // 모델 정보 표시
+    function showModelInfo() {
+      const model = new TinyAI([10, 20, 10, 5], 'relu');
+      const output = document.getElementById('model-info');
+
+      const originalLog = console.log;
+      let info = '';
+      console.log = (msg) => { info += msg + '\n'; };
+
+      model.summary();
+
+      console.log = originalLog;
+
+      output.style.display = 'block';
+      output.textContent = info;
+    }
+
+    // 페이지 로드시 초기 캔버스 설정
+    window.onload = function() {
+      const sinCanvas = document.getElementById('sin-canvas');
+      const sinCtx = sinCanvas.getContext('2d');
+      sinCtx.fillStyle = '#f8f9fa';
+      sinCtx.fillRect(0, 0, sinCanvas.width, sinCanvas.height);
+      sinCtx.font = '16px Arial';
+      sinCtx.fillStyle = '#999';
+      sinCtx.textAlign = 'center';
+      sinCtx.fillText('학습 버튼을 눌러 시작하세요', sinCanvas.width / 2, sinCanvas.height / 2);
+
+      const circleCanvas = document.getElementById('circle-canvas');
+      const circleCtx = circleCanvas.getContext('2d');
+      circleCtx.fillStyle = '#f8f9fa';
+      circleCtx.fillRect(0, 0, circleCanvas.width, circleCanvas.height);
+      circleCtx.font = '16px Arial';
+      circleCtx.fillStyle = '#999';
+      circleCtx.textAlign = 'center';
+      circleCtx.fillText('학습 버튼을 눌러 시작하세요', circleCanvas.width / 2, circleCanvas.height / 2);
+    };
+  </script>
+</body>
+</html>
